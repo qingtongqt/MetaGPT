@@ -2,10 +2,8 @@
 # -*- coding: utf-8 -*-
 """
 @Time    : 2023/5/12 00:30
-@Author  : alexanderwu
+@Author  : leoqing
 @File    : team.py
-@Modified By: mashenquan, 2023/11/27. Add an archiving operation after completing the project, as specified in
-        Section 2.2.3.3 of RFC 135.
 """
 
 import warnings
@@ -21,6 +19,7 @@ from metagpt.environment import Environment
 from metagpt.logs import logger
 from metagpt.roles import Role
 from metagpt.schema import Message
+# from team import Team
 from metagpt.utils.common import (
     NoMoneyException,
     read_json_file,
@@ -29,10 +28,10 @@ from metagpt.utils.common import (
 )
 
 
-class Team(BaseModel):
+class DyTeam(BaseModel):
     """
-    Team: Possesses one or more roles (agents), SOP (Standard Operating Procedures), and an env for instant messaging,
-    dedicated to env any multi-agent activity, such as collaboratively writing executable code.
+    DyTeam: Possesses one or more roles (agents), dynamic communication, and an env for instant messaging,
+    dedicated to env any dynamic multi-agent activity, such as agent optimization based on specific task.
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -42,7 +41,7 @@ class Team(BaseModel):
     idea: str = Field(default="")
 
     def __init__(self, **data: Any):
-        super(Team, self).__init__(**data)
+        super(DyTeam, self).__init__(**data)
         if "roles" in data:
             self.hire(data["roles"])
         if "env_desc" in data:
@@ -72,8 +71,8 @@ class Team(BaseModel):
         # recover environment
         environment = Environment.deserialize(stg_path=stg_path.joinpath("environment"))
         team_info.update({"env": environment})
-        team = Team(**team_info)
-        return team
+        dyteam = DyTeam(**team_info)
+        return dyteam
 
     def hire(self, roles: list[Role]):
         """Hire roles to cooperate"""
@@ -92,6 +91,18 @@ class Team(BaseModel):
             raise NoMoneyException(
                 CONFIG.cost_manager.total_cost, f"Insufficient funds: {CONFIG.cost_manager.max_budget}"
             )
+
+    # def run_project(self, idea, send_to: set[str] = None):
+    #     """Run a project from publishing user requirement."""
+    #     if send_to is None:
+    #         send_to = {MESSAGE_ROUTE_TO_ALL}
+    #     self.idea = idea
+    #
+    #     # Human requirement.
+    #     self.env.publish_message(
+    #         Message(role="Human", content=idea, cause_by=UserRequirement, send_to=send_to),
+    #         peekable=False,
+    #     )
 
     def run_project(self, idea, send_to: str = ""):
         """Run a project from publishing user requirement."""

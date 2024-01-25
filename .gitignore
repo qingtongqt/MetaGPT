@@ -177,3 +177,6 @@ htmlcov.*
 *-structure.csv
 *-structure.json
 
+# others
+simple_test/
+
