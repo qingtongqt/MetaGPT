@@ -19,7 +19,7 @@ from metagpt.environment import Environment
 from metagpt.logs import logger
 from metagpt.roles import Role
 from metagpt.schema import Message
-# from team import Team
+from team import Team
 from metagpt.utils.common import (
     NoMoneyException,
     read_json_file,
@@ -28,69 +28,47 @@ from metagpt.utils.common import (
 )
 
 
-class DyTeam(BaseModel):
+class DyTeam(Team):
     """
     DyTeam: Possesses one or more roles (agents), dynamic communication, and an env for instant messaging,
     dedicated to env any dynamic multi-agent activity, such as agent optimization based on specific task.
     """
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    env: Environment = Field(default_factory=Environment)
-    investment: float = Field(default=10.0)
-    idea: str = Field(default="")
+    # model_config = ConfigDict(arbitrary_types_allowed=True)
+    #
+    # env: Environment = Field(default_factory=Environment)
+    # investment: float = Field(default=10.0)
+    # idea: str = Field(default="")
 
     def __init__(self, **data: Any):
         super(DyTeam, self).__init__(**data)
-        if "roles" in data:
-            self.hire(data["roles"])
-        if "env_desc" in data:
-            self.env.desc = data["env_desc"]
 
     def serialize(self, stg_path: Path = None):
-        stg_path = SERDESER_PATH.joinpath("team") if stg_path is None else stg_path
+        stg_path = SERDESER_PATH.joinpath("dyteam") if stg_path is None else stg_path
 
-        team_info_path = stg_path.joinpath("team_info.json")
+        team_info_path = stg_path.joinpath("dyteam_info.json")
         write_json_file(team_info_path, self.model_dump(exclude={"env": True}))
 
         self.env.serialize(stg_path.joinpath("environment"))  # save environment alone
 
     @classmethod
-    def deserialize(cls, stg_path: Path) -> "Team":
-        """stg_path = ./storage/team"""
+    def deserialize(cls, stg_path: Path) -> "DyTeam":
+        """stg_path = ./storage/dyteam"""
         # recover team_info
-        team_info_path = stg_path.joinpath("team_info.json")
+        team_info_path = stg_path.joinpath("dyteam_info.json")
         if not team_info_path.exists():
             raise FileNotFoundError(
-                "recover storage meta file `team_info.json` not exist, "
+                "recover storage meta file `dyteam_info.json` not exist, "
                 "not to recover and please start a new project."
             )
 
-        team_info: dict = read_json_file(team_info_path)
+        dyteam_info: dict = read_json_file(team_info_path)
 
         # recover environment
         environment = Environment.deserialize(stg_path=stg_path.joinpath("environment"))
-        team_info.update({"env": environment})
-        dyteam = DyTeam(**team_info)
+        dyteam_info.update({"env": environment})
+        dyteam = DyTeam(**dyteam_info)
         return dyteam
-
-    def hire(self, roles: list[Role]):
-        """Hire roles to cooperate"""
-        self.env.add_roles(roles)
-
-    def invest(self, investment: float):
-        """Invest company. raise NoMoneyException when exceed max_budget."""
-        self.investment = investment
-        CONFIG.max_budget = investment
-        CONFIG.cost_manager.max_budget = investment
-        logger.info(f"Investment: ${investment}.")
-
-    @staticmethod
-    def _check_balance():
-        if CONFIG.cost_manager.total_cost >= CONFIG.cost_manager.max_budget:
-            raise NoMoneyException(
-                CONFIG.cost_manager.total_cost, f"Insufficient funds: {CONFIG.cost_manager.max_budget}"
-            )
 
     # def run_project(self, idea, send_to: set[str] = None):
     #     """Run a project from publishing user requirement."""
@@ -113,19 +91,6 @@ class DyTeam(BaseModel):
             Message(role="Human", content=idea, cause_by=UserRequirement, send_to=send_to or MESSAGE_ROUTE_TO_ALL),
             peekable=False,
         )
-
-    def start_project(self, idea, send_to: str = ""):
-        """
-        Deprecated: This method will be removed in the future.
-        Please use the `run_project` method instead.
-        """
-        warnings.warn(
-            "The 'start_project' method is deprecated and will be removed in the future. "
-            "Please use the 'run_project' method instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return self.run_project(idea=idea, send_to=send_to)
 
     def _save(self):
         logger.info(self.model_dump_json())
