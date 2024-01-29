@@ -95,9 +95,43 @@ class DyTeam(Team):
     def _save(self):
         logger.info(self.model_dump_json())
 
+    def check_consensus(self) -> bool:
+        return False
+
     @serialize_decorator
-    async def run(self, n_round=3, idea="", send_to="", auto_archive=True):
-        """Run company until target round or no money"""
+    async def run(self, n_round=3, idea="", send_to="", dynamic_group: dict[str, set[Role]] = None, auto_archive=True):
+        """Run company until target round or no money or reach consensus
+
+        Args:
+            n_round: number of iterations
+            idea: start message
+            dynamic_group: a set of roles having the same purpose with the dynamic structure
+
+            dynamic_group = {
+                "group1": {"Role1", "Role2"},
+                "group2": {"Role3", "Role4"},
+                "group3": {"Role5", "Role6"}
+            }
+
+            send_to: the message sent to during initialization
+            auto_archive: related to git_repo
+        """
+
+        if dynamic_group:
+            # 判断不同动态组中是否有重叠
+            all_dynamic_roles = set()
+            for roles in dynamic_group.values():
+                if roles & all_dynamic_roles:
+                    raise Exception(f"Intersection found in multi dynamic_group")
+                all_dynamic_roles.update(roles)
+
+            # 在环境中members变量添加group_name
+            for group_name, roles in dynamic_group.items():
+                logger.info(f"{group_name}:" + ",".join(role.name for role in roles))
+                for role in roles:
+                    role.is_dynamic = True
+                    self.env.add_subscription(role, group_name)
+
         if idea:
             self.run_project(idea=idea, send_to=send_to)
 
@@ -106,6 +140,8 @@ class DyTeam(Team):
             n_round -= 1
             logger.debug(f"max {n_round=} left.")
             self._check_balance()
+            if self.check_consensus():
+                break
 
             await self.env.run()
         self.env.archive(auto_archive)

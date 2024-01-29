@@ -185,6 +185,22 @@ class Environment(BaseModel):
         """Set the labels for message to be consumed by the object"""
         self.members[obj] = tags
 
+    def add_subscription(self, obj, tags):
+        """add the labels for message to be consumed by the object"""
+        if obj not in self.members:
+            # 如果对象没有订阅，初始化一个空集合
+            self.members[obj] = set()
+
+        # 检查tags是单个字符串还是字符串集合
+        if isinstance(tags, str):
+            # 如果是字符串，直接添加
+            self.members[obj].add(tags)
+        elif isinstance(tags, set):
+            # 如果是集合，将集合中的元素添加
+            self.members[obj].update(tags)
+        else:
+            raise ValueError("tags 必须是字符串或字符串集合")
+
     @staticmethod
     def archive(auto_archive=True):
         if auto_archive and CONFIG.git_repo:

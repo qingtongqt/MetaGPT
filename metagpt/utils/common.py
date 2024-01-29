@@ -196,15 +196,15 @@ class OutputParser:
             - If extraction fails or parsing encounters an error, it throw an exception.
 
         Examples:
-            >>> text = 'xxx [1, 2, ["a", "b", [3, 4]], {"x": 5, "y": [6, 7]}] xxx'
-            >>> result_list = OutputParser.extract_struct(text, "list")
-            >>> print(result_list)
-            >>> # Output: [1, 2, ["a", "b", [3, 4]], {"x": 5, "y": [6, 7]}]
-
-            >>> text = 'xxx {"x": 1, "y": {"a": 2, "b": {"c": 3}}} xxx'
-            >>> result_dict = OutputParser.extract_struct(text, "dict")
-            >>> print(result_dict)
-            >>> # Output: {"x": 1, "y": {"a": 2, "b": {"c": 3}}}
+            # >>> text = 'xxx [1, 2, ["a", "b", [3, 4]], {"x": 5, "y": [6, 7]}] xxx'
+            # >>> result_list = OutputParser.extract_struct(text, "list")
+            # >>> print(result_list)
+            # >>> # Output: [1, 2, ["a", "b", [3, 4]], {"x": 5, "y": [6, 7]}]
+            #
+            # >>> text = 'xxx {"x": 1, "y": {"a": 2, "b": {"c": 3}}} xxx'
+            # >>> result_dict = OutputParser.extract_struct(text, "dict")
+            # >>> print(result_dict)
+            # >>> # Output: {"x": 1, "y": {"a": 2, "b": {"c": 3}}}
         """
         # Find the first "[" or "{" and the last "]" or "}"
         start_index = text.find("[" if data_type is list else "{")

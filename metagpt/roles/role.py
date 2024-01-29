@@ -137,6 +137,7 @@ class Role(SerializationMixin, is_polymorphic_base=True):
     constraints: str = ""
     desc: str = ""
     is_human: bool = False
+    is_dynamic: bool = False
 
     llm: BaseLLM = Field(default_factory=LLM, exclude=True)  # Each role has its own LLM, use different system message
     role_id: str = ""
