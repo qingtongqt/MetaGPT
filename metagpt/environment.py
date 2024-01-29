@@ -86,6 +86,21 @@ class Environment(BaseModel):
         self.roles[role.profile] = role
         role.set_env(self)
 
+    def del_role(self, role: Role):
+        """删除一个在当前环境的角色
+        Delete a role in the current environment
+        """
+        # 从 roles 字典中移除角色
+        role_key = role.profile
+        if role_key in self.roles:
+            del self.roles[role_key]
+        else:
+            logger.warning(f"delete role error! {role.name}({role.profile}) not in the env")
+
+        # 从 members 字典中移除角色
+        if role in self.members:
+            del self.members[role]
+
     def add_roles(self, roles: Iterable[Role]):
         """增加一批在当前环境的角色
         Add a batch of characters in the current environment
@@ -95,6 +110,14 @@ class Environment(BaseModel):
 
         for role in roles:  # setup system message with roles
             role.set_env(self)
+
+    def del_roles(self, roles: Iterable[Role]):
+        """
+        删除一批在当前环境的角色
+        Delete a batch of roles in the current environment
+        """
+        for role in roles:
+            self.del_role(role)
 
     def publish_message(self, message: Message, peekable: bool = True) -> bool:
         """
