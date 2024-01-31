@@ -18,7 +18,7 @@ from metagpt.const import METAGPT_ROOT
 def define_log_level(print_level="INFO", logfile_level="DEBUG"):
     """Adjust the log level to above level"""
     current_date = datetime.now()
-    formatted_date = current_date.strftime("%Y%m%d")
+    formatted_date = current_date.strftime("%Y%m%d_%H%M")
 
     _logger.remove()
     _logger.add(sys.stderr, level=print_level)
