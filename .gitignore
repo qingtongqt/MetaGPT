@@ -162,6 +162,7 @@ metagpt/roles/idea_agent.py
 .aider*
 *.bak
 *.bk
+simple_test/
 
 # output folder
 output
