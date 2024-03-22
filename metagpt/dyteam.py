@@ -136,9 +136,9 @@ class DyTeam(Team):
             dynamic_group: a set of roles having the same purpose with the dynamic structure
 
             dynamic_group = {
-                "group1": {["Role1", w1, n1], ["Role2", w2, n2]},
-                "group2": {["Role3", w3, n3], ["Role4", w4, n4]},
-                "group3": {["Role5", w5, n5], ["Role6", w6, n6]}
+                "group1": {"Role1", "Role2"},
+                "group2": {"Role3", "Role4"},
+                "group3": {"Role5", "Role6"}
             }
 
             send_to: the message sent to during initialization

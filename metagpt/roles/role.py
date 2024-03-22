@@ -145,6 +145,10 @@ class Role(SerializationMixin, ContextMixin, BaseModel):
     role_id: str = ""
     states: list[str] = []
 
+    is_dynamic: bool = False
+    w: int = 0
+    n: int = 0
+
     # scenarios to set action system_prompt:
     #   1. `__init__` while using Role(actions=[...])
     #   2. add action to role while using `role.set_action(action)`
@@ -249,6 +253,12 @@ class Role(SerializationMixin, ContextMixin, BaseModel):
         """Check actions and set llm and prefix for each action."""
         self.set_actions(self.actions)
         return self
+
+    def set_w_n(self, w: int, n: int):
+        assert n >= w
+        assert w >= 0
+        self.w = w
+        self.n = n
 
     def _init_action(self, action: Action):
         if not action.private_config:
