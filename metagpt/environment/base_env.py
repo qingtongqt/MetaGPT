@@ -132,6 +132,32 @@ class Environment(ExtEnv):
             role.set_env(self)
             role.context = self.context
 
+    def del_role(self, role: "Role"):
+        """删除一个在当前环境的角色
+        Delete a role in the current environment
+        """
+        if not role.is_dynamic:
+            logger.warning(f"{role.name}({role.profile}) is not dynamic!")
+            return
+        # 从 roles 字典中移除角色
+        role_key = role.profile
+        if role_key in self.roles:
+            del self.roles[role_key]
+        else:
+            logger.warning(f"delete role error! {role.name}({role.profile}) not in the env")
+
+        # 从 member_addrs 字典中移除角色
+        if role in self.member_addrs:
+            del self.member_addrs[role]
+
+    def del_roles(self, roles: Iterable["Role"]):
+        """
+        删除一批在当前环境的角色
+        Delete a batch of roles in the current environment
+        """
+        for role in roles:
+            self.del_role(role)
+
     def publish_message(self, message: Message, peekable: bool = True) -> bool:
         """
         Distribute the message to the recipients.

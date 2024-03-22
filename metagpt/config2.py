@@ -92,6 +92,7 @@ class Config(CLIParams, YamlModel):
         """
         default_config_paths: List[Path] = [
             METAGPT_ROOT / "config/config2.yaml",
+            METAGPT_ROOT / "config/key.yaml",
             Path.home() / ".metagpt/config2.yaml",
         ]
 
