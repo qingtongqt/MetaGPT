@@ -44,6 +44,7 @@ class DyTeam(Team):
     # env: Environment = Field(default_factory=Environment)
     # investment: float = Field(default=10.0)
     # idea: str = Field(default="")
+    dynamic_group: dict[str, set[Role]] = None
 
     def __init__(self, context: Context = None, **data: Any):
         super(DyTeam, self).__init__(context=context, **data)
@@ -51,8 +52,8 @@ class DyTeam(Team):
     def serialize(self, stg_path: Path = None):
         stg_path = SERDESER_PATH.joinpath("dyteam") if stg_path is None else stg_path
 
-        team_info_path = stg_path.joinpath("dyteam_info.json")
-        write_json_file(team_info_path, self.model_dump(exclude={"env": True}))
+        dyteam_info_path = stg_path.joinpath("dyteam_info.json")
+        write_json_file(dyteam_info_path, self.model_dump(exclude={"env": True}))
 
         self.env.serialize(stg_path.joinpath("environment"))  # save environment alone
 
@@ -84,11 +85,11 @@ class DyTeam(Team):
     def _save(self):
         logger.info(self.model_dump_json())
 
-    def check_consensus(self, dynamic_group: dict[str, set[Role]] = None) -> dict[str, bool]:
-        if not dynamic_group:
+    def check_consensus(self) -> dict[str, bool]:
+        if not self.dynamic_group:
             return
-        new_dict = {key: False for key in dynamic_group.keys()}
-        for group_name, roles in dynamic_group.items():
+        new_dict = {key: False for key in self.dynamic_group.keys()}
+        for group_name, roles in self.dynamic_group.items():
             # 判断在dynamic_group中的每个role，最近一条消息是不是自己产生的
             # 如果是其他role发过来的则不需check_consensus
             if not all(role.rc.memory.get(1)[0].sent_from == role for role in roles):
@@ -146,19 +147,21 @@ class DyTeam(Team):
         """
 
         if dynamic_group:
+            self.dynamic_group = dynamic_group
             # 判断不同动态组中是否有重叠
             all_dynamic_roles = set()
-            for roles in dynamic_group.values():
+            for roles in self.dynamic_group.values():
                 if roles & all_dynamic_roles:
                     raise Exception(f"Intersection found in multi dynamic_group")
                 all_dynamic_roles.update(roles)
 
             # 在环境中members变量添加group_name
-            for group_name, roles in dynamic_group.items():
+            for group_name, roles in self.dynamic_group.items():
                 logger.info(f"{group_name}:" + ",".join(role.name for role in roles))
                 for role in roles:
                     role.is_dynamic = True
                     self.env.set_addresses(role, group_name)
+
 
         if idea:
             self.run_project(idea=idea, send_to=send_to)

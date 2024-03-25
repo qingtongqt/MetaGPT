@@ -26,6 +26,8 @@ async def main():
     # check completion if exist to test llm complete functions
     if hasattr(llm, "completion"):
         logger.info(llm.completion(hello_msg))
+    else:
+        logger.info(f"LLM {llm} doesn't have completion!")
 
 
 if __name__ == "__main__":
