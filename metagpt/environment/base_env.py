@@ -224,6 +224,18 @@ class Environment(ExtEnv):
         """Set the addresses of the object"""
         self.member_addrs[obj] = addresses
 
+    def add_addresses(self, obj, addresses):
+        """Add the addresses of the object(for dynamic structure)"""
+        if obj not in self.member_addrs:
+            logger.warning("set addresses before add addresses!")
+            self.set_addresses(obj, addresses)
+            return
+        if self.member_addrs[obj]:
+            if isinstance(addresses, str):
+                self.member_addrs[obj].add(addresses)
+            elif isinstance(addresses, set):
+                self.member_addrs[obj].update(addresses)
+
     def archive(self, auto_archive=True):
         if auto_archive and self.context.git_repo:
             self.context.git_repo.archive()
