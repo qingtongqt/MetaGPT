@@ -27,6 +27,8 @@ from metagpt.utils.common import (
     serialize_decorator,
     write_json_file,
 )
+
+
 # from metagpt.utils.dynamic_common import (
 #     extract_math_answer,
 #     is_equiv,
@@ -155,13 +157,13 @@ class DyTeam(Team):
                     raise Exception(f"Intersection found in multi dynamic_group")
                 all_dynamic_roles.update(roles)
 
-            # 在环境中members变量添加group_name
+            # 在环境中member_addrs变量添加group_name
             for group_name, roles in self.dynamic_group.items():
                 logger.info(f"{group_name}:" + ",".join(role.name for role in roles))
                 for role in roles:
                     role.is_dynamic = True
                     self.env.set_addresses(role, group_name)
-
+                    # TODO 加入是否是consensus role的判断
 
         if idea:
             self.run_project(idea=idea, send_to=send_to)
@@ -172,7 +174,7 @@ class DyTeam(Team):
             logger.debug(f"max {n_round=} left.")
             self._check_balance()
             if dynamic_group:
-                consensus_dict = self.check_consensus(dynamic_group)
+                consensus_dict = self.check_consensus()
                 if all(consensus_dict.values()):
                     break
 

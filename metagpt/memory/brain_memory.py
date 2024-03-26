@@ -124,9 +124,11 @@ class BrainMemory(BaseModel):
 
     async def summarize(self, llm, max_words=200, keep_language: bool = False, limit: int = -1, **kwargs):
         if isinstance(llm, MetaGPTLLM):
+            # 只做self.history的截断
             return await self._metagpt_summarize(max_words=max_words)
 
         self.llm = llm
+        # 更新historical_summary为总结内容，并清空self.history
         return await self._openai_summarize(llm=llm, max_words=max_words, keep_language=keep_language, limit=limit)
 
     async def _openai_summarize(self, llm, max_words=200, keep_language: bool = False, limit: int = -1):
@@ -145,6 +147,7 @@ class BrainMemory(BaseModel):
         raise ValueError(f"text too long:{text_length}")
 
     async def _metagpt_summarize(self, max_words=200):
+        """直接截断消息更新self.history，不调用LLM"""
         if not self.history:
             return ""
 
