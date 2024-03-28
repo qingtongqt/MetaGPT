@@ -338,6 +338,11 @@ class Role(SerializationMixin, ContextMixin, BaseModel):
         if self.rc.env:  # According to the routing feature plan in Chapter 2.2.3.2 of RFC 113
             self.rc.env.set_addresses(self, self.addresses)
 
+    def add_addresses(self, addresses: Set[str]):
+        self.addresses.update(addresses)
+        if self.rc.env:
+            self.rc.env.set_addresses(self, self.addresses)
+
     def _set_state(self, state: int):
         """Update the current state."""
         self.rc.state = state
