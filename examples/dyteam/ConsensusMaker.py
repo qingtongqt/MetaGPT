@@ -3,7 +3,7 @@ from metagpt.actions.action import Action
 from metagpt.roles.role import Role
 from metagpt.schema import Message
 from metagpt.logs import logger
-from typing import Type
+import json
 
 
 class MakeConsensus(Action):
@@ -18,6 +18,7 @@ class MakeConsensus(Action):
         if not group_message:
             logger.error(" no group message")
         if not use_llm:
+            # TODO
             for i in group_message.items():
                 pass
         else:
@@ -25,11 +26,55 @@ class MakeConsensus(Action):
             prompt = self.PROMPT_TEMPLATE.format(goal=goal)
             for role, content in group_message:
                 prompt += f"{role.profile}:\n{content}\n"
-            prompt += "Return the consensus version with NO other texts,\nconsensus content:\n"
+            prompt += "\nReturn the consensus version with NO other texts,\nconsensus content:\n"
 
             consensus_content = await self._aask(prompt)
             return consensus_content
 
+
+class CheckConsensus(Action):
+    PROMPT_TEMPLATE: str = (
+        "Your task is to check whether all answers given by different members are in agreement. "
+        "All members have the same goal: {goal}.\n"
+        "You need to give a dict to judge whether they make consensus, "
+        "for example:{\"Role1\":True, \"Role2\":False, \"Role3\":True} means Role1 and Role3 are in agreement "
+        "while Role2 has different opinions.\n"
+        "You need to find the role that reaches the most consensus and set the corresponding item to True, "
+        "and the role that does not reach consensus set it to False.\n"
+        "Here are the results given by all members of the team:"
+    )
+    name: str = "CheckConsensus"
+
+    async def run(self, group_message: dict[Role, str], use_llm: bool = True) -> dict[Role, bool]:
+        """给出每个Role的结果，查看是否达成共识"""
+        if not group_message:
+            logger.error(" no group message")
+        if not use_llm:
+            logger.warning("you should implement not_use_llm method in the subclass")
+            return
+        else:
+            goal = list(group_message.keys())[0].goal
+            prompt = self.PROMPT_TEMPLATE.format(goal=goal)
+            for role, content in group_message:
+                prompt += f"{role.profile}: {content}\n"
+            prompt += "\nReturn a dict with NO other texts:"
+
+            consensus_ans = await self._aask(prompt)
+            consensus_dict = CheckConsensus.parse_dict(group_message, consensus_ans)
+            return consensus_dict
+
+    @staticmethod
+    def parse_dict(group_message, rsp) -> dict[Role, bool]:
+        if not rsp.startswith("{"):
+            logger.error(f"rsp:{rsp} can't be parsed")
+        parsed_dict = json.loads(rsp)
+        role_bool_dict = {}
+        for role in group_message:
+            if role.profile in parsed_dict:
+                role_bool_dict[role] = parsed_dict[role.profile]
+        for role, value in role_bool_dict.items():
+            logger.debug(f"Role profile: {role.profile}, Value: {value}")
+        return role_bool_dict
 
 class ConsensusMaker(Role):
     name: str = "Sam"
