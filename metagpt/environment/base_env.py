@@ -107,6 +107,7 @@ class Environment(ExtEnv):
     member_addrs: Dict["Role", Set] = Field(default_factory=dict, exclude=True)
     history: str = ""  # For debug
     context: Context = Field(default_factory=Context, exclude=True)
+    UserPrompt: str = ""
 
     @model_validator(mode="after")
     def init_roles(self):
