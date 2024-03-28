@@ -3,42 +3,46 @@ from metagpt.actions.action import Action
 from metagpt.roles.role import Role
 from metagpt.schema import Message
 from metagpt.logs import logger
-import re
+from typing import Type
 
 
 class MakeConsensus(Action):
+    PROMPT_TEMPLATE: str = """
+        Your task is to create a consensus version that incorporates the best aspects of each
+        Here are the results given by all members of the team with the common goal of {goal}:
+        """
     name: str = "MakeConsensus"
 
-    async def run(self, codes: list[str]) -> str:
-        if not codes:
-            return "No codes to process."
+    async def run(self, group_message: dict[Role, str], use_llm: bool = False) -> str:
+        """给出每个Role的结果，返回共识"""
+        if not group_message:
+            logger.error(" no group message")
+        if not use_llm:
+            for i in group_message.items():
+                pass
+        else:
+            goal = list(group_message.keys())[0].goal
+            prompt = self.PROMPT_TEMPLATE.format(goal=goal)
+            for role, content in group_message:
+                prompt += f"{role.profile}:\n{content}\n"
+            prompt += "Return the consensus version with NO other texts,\nconsensus content:\n"
 
-        # 组装提示信息，将收到的代码作为参考
-        prompt = "Given the following Python code snippets, create a consensus version that incorporates the best aspects of each:\n\n"
-        for i, code in enumerate(codes, 1):
-            prompt += f"Code snippet {i}:\n```python\n{code}\n```\n\n"
-        prompt += "Your consensus code:\n"
-
-        # 调用 LLM 来处理提示信息并生成最终代码
-        final_code = await self._aask(prompt)
-        return final_code
+            consensus_content = await self._aask(prompt)
+            return consensus_content
 
 
 class ConsensusMaker(Role):
     name: str = "Sam"
     profile: str = "Consensus Maker"
-    goal: str = "Receive output from other members of the group and determine if they reach a consensus"
+    goal: str = "Receive output from other members of the group and help they to reach a consensus"
     constraints: str = ""
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.set_actions([MakeConsensus])
 
     async def run(self, with_message=None) -> None:
-        if not await self._observe():
-            # If there is no new information, suspend and wait
-            logger.debug(f"{self._setting}: no news. waiting.")
-            return
-        # 从内存中检索所有相关的代码消息
+
         codes = [msg.content for msg in self.get_memories() if isinstance(msg.cause_by, WriteCode)]
 
         if codes:
@@ -49,3 +53,10 @@ class ConsensusMaker(Role):
             print(f"Consensus code: {final_code}")
             # 发布共识代码结果，可以选择发送给特定角色或处理其他逻辑
             # self.publish_message(Message(content=final_code, ...))
+
+    async def _act(self) -> Message:
+        group_message = {}
+        for i in self.rc.news:
+            group_message[self.rc.env.roles[i.role]] = i.content
+        rsp = await self.todo.run(group_message)
+        return rsp

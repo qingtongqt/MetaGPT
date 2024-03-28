@@ -1,12 +1,58 @@
 # -*- coding:utf-8 -*-
+from typing import Tuple
+
 from metagpt.actions.action import Action
+from metagpt.actions import UserRequirement
 from metagpt.roles.role import Role
 from metagpt.schema import Message
 from metagpt.logs import logger
+from ConsensusMaker import ConsensusMaker
 
 
-class ProblemAnalyst(Role):
-    name: str = "Bob"
+class Analyze(Action):
+    PROMPT_TEMPLATE: str = """
+    Here is a function signature and its docstring by the user:
+    {instruction}
+    Your task is to analyze the problem statement carefully and put forward your thoughts.
+    Provide a brief summary, ensuring that the problem is fully understood before any attempt to solve it is made.
+    Return your thoughts with NO other texts,
+    your thoughts:
+    """
+
+    name: str = "Analyze"
+
+    async def run(self, instruction: str) -> str:
+        prompt = self.PROMPT_TEMPLATE.format(instruction=instruction)
+        rsp = await self._aask(prompt)
+        return rsp
+
+
+class ProblemAnalyzerConsensusMaker(ConsensusMaker):
+    name: str = "Sam"
+    profile: str = "Problem Analyzer Consensus Maker"
+    goal: str = "Receive output from other members of the group and help they to reach a consensus"
+    constraints: str = ""
+
+class ProblemAnalyzer(Role):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.set_actions([Analyze])
+        self._watch([UserRequirement])
+
+    async def _act(self) -> Message:
+        # 解析接收到的UserRequirement
+        instruction = self.get_memories(k=1)[0].content
+        logger.debug(f"instruction:{instruction}")
+        # 执行分析的动作
+        analyze_result = await self.todo.run(instruction)
+        logger.debug(f"analyze result:{analyze_result}")
+        # 将生成的代码发送给 ConsensusMaker
+        msg = Message(role=self.profile, content=analyze_result, cause_by=Analyze, send_to="ProblemAnalyzerConsensusMaker")
+        return msg
+
+
+class ProblemAnalyst(ProblemAnalyzer):
+    name: str = "Sandy"
     profile: str = "Problem Analyst"
     goal: str = "Parse the problem statement to determine the type and scope of the problem."
     desc: str = ("You are an expert in dissecting complex problems into manageable parts. "
@@ -18,8 +64,8 @@ class ProblemAnalyst(Role):
                  "emphasizing its critical aspects.")
 
 
-class RequirementsEngineer(Role):
-    name: str = "Bob"
+class RequirementsEngineer(ProblemAnalyzer):
+    name: str = "Sue"
     profile: str = "Requirements Engineer"
     goal: str = "understand and refine the specific requirements and constraints in the problem"
     desc: str = ("With a solid background in requirements engineering, "
@@ -31,7 +77,7 @@ class RequirementsEngineer(Role):
 
 
 class AlgorithmExpert(Role):
-    name: str = "Bob"
+    name: str = "Julia"
     profile: str = "Algorithm Expert"
     goal: str = "understand and refine the specific requirements and constraints in the problem"
     desc: str = ("You are an algorithm Expert. "

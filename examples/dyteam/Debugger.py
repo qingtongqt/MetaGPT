@@ -6,7 +6,7 @@ from metagpt.logs import logger
 
 
 class TestEngineer(Role):
-    name: str = "Bob"
+    name: str = "David"
     profile: str = "Test Engineer"
     goal: str = "Write test cases based on the problem description and expected output. " \
                 "Run the generated code, checking for correctness and edge conditions"
@@ -19,7 +19,7 @@ class TestEngineer(Role):
 
 
 class BugFixer(Role):
-    name: str = "Bob"
+    name: str = "Ryan"
     profile: str = "BugFixer"
     goal: str = "Write test cases based on the problem description and expected output. " \
                 "Run the generated code, checking for correctness and edge conditions"
