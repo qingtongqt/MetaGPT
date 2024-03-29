@@ -48,6 +48,7 @@ class CheckConsensus(Action):
 
     @abstractmethod
     def check_no_llm(self, group_message: dict[Role, str]) -> dict[Role, bool]:
+        pass
 
     async def run(self, group_message: dict[Role, str], use_llm: bool = True) -> dict[Role, bool]:
         """给出每个Role的结果，查看是否达成共识"""
