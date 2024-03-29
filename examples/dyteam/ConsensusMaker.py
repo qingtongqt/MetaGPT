@@ -3,6 +3,7 @@ from metagpt.actions.action import Action
 from metagpt.roles.role import Role
 from metagpt.schema import Message
 from metagpt.logs import logger
+from abc import abstractmethod
 import json
 
 
@@ -45,13 +46,15 @@ class CheckConsensus(Action):
     )
     name: str = "CheckConsensus"
 
+    @abstractmethod
+    def check_no_llm(self, group_message: dict[Role, str]) -> dict[Role, bool]:
+
     async def run(self, group_message: dict[Role, str], use_llm: bool = True) -> dict[Role, bool]:
         """给出每个Role的结果，查看是否达成共识"""
         if not group_message:
             logger.error(" no group message")
         if not use_llm:
-            logger.warning("you should implement not_use_llm method in the subclass")
-            return
+            return self.check_no_llm(group_message)
         else:
             goal = list(group_message.keys())[0].goal
             prompt = self.PROMPT_TEMPLATE.format(goal=goal)
@@ -76,6 +79,7 @@ class CheckConsensus(Action):
             logger.debug(f"Role profile: {role.profile}, Value: {value}")
         return role_bool_dict
 
+
 class ConsensusMaker(Role):
     name: str = "Sam"
     profile: str = "Consensus Maker"
@@ -84,20 +88,9 @@ class ConsensusMaker(Role):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.set_actions([MakeConsensus])
+        self.set_actions([CheckConsensus, MakeConsensus])
+        self._set_react_mode(react_mode="by_order")
 
-    async def run(self, with_message=None) -> None:
-
-        codes = [msg.content for msg in self.get_memories() if isinstance(msg.cause_by, WriteCode)]
-
-        if codes:
-            # 如果收到了代码，调用 MakeConsensus 动作来生成共识代码
-            consensus_action = MakeConsensus()
-            final_code = await consensus_action.run(codes)
-            # 输出最终代码，或进行其他处理
-            print(f"Consensus code: {final_code}")
-            # 发布共识代码结果，可以选择发送给特定角色或处理其他逻辑
-            # self.publish_message(Message(content=final_code, ...))
 
     async def _act(self) -> Message:
         group_message = {}
