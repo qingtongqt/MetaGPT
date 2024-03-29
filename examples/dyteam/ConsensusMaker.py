@@ -5,6 +5,7 @@ from metagpt.schema import Message
 from metagpt.logs import logger
 from abc import abstractmethod
 import json
+from route import add_to_route
 
 
 class MakeConsensus(Action):
@@ -92,10 +93,12 @@ class ConsensusMaker(Role):
         self.set_actions([CheckConsensus, MakeConsensus])
         self._set_react_mode(react_mode="by_order")
 
-
     async def _act(self) -> Message:
         group_message = {}
         for i in self.rc.news:
             group_message[self.rc.env.roles[i.role]] = i.content
         rsp = await self.todo.run(group_message)
+        if isinstance(self.rc.todo, CheckConsensus):
+            for role, value in rsp.items():
+
         return rsp

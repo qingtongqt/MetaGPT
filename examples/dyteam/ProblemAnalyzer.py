@@ -33,6 +33,7 @@ class ProblemAnalyzerConsensusMaker(ConsensusMaker):
     goal: str = "Receive output from other members of the group and help they to reach a consensus"
     constraints: str = ""
 
+
 class ProblemAnalyzer(Role):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -47,7 +48,8 @@ class ProblemAnalyzer(Role):
         analyze_result = await self.todo.run(instruction)
         logger.debug(f"analyze result:{analyze_result}")
         # 将生成的代码发送给 ConsensusMaker
-        msg = Message(role=self.profile, content=analyze_result, cause_by=Analyze, send_to="ProblemAnalyzerConsensusMaker")
+        msg = Message(role=self.profile, content=analyze_result, cause_by=Analyze,
+                      send_to="ProblemAnalyzerConsensusMaker")
         return msg
 
 
@@ -85,4 +87,3 @@ class AlgorithmExpert(Role):
                  "You must respond with your solution about the problem. "
                  "You will be given a function signature and its docstring by the user. "
                  "Write your opinion about the the knowledge you need to write code.")
-
