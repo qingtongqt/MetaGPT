@@ -34,7 +34,7 @@ from metagpt.context_mixin import ContextMixin
 from metagpt.logs import logger
 from metagpt.memory import Memory
 from metagpt.provider import HumanProvider
-from metagpt.schema import Message, MessageQueue, SerializationMixin
+from metagpt.schema import Message, MessageQueue, SerializationMixin, Task, TaskResult
 from metagpt.strategy.planner import Planner
 from metagpt.utils.common import any_to_name, any_to_str, role_raise_decorator
 from metagpt.utils.project_repo import ProjectRepo
@@ -532,7 +532,7 @@ class Role(SerializationMixin, ContextMixin, BaseModel):
         Returns:
             TaskResult: Result from the actions
         """
-        raise NotImplementedError
+        pass
 
     async def react(self) -> Message:
         """Entry to one of three strategies by which Role reacts to the observed Message"""
