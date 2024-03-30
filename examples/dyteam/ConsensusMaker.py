@@ -47,6 +47,8 @@ class MakeConsensus(Action):
                 return random.choice(list(group_message.values()))
 
         else:
+            for r in (group_message.keys()):
+                add_to_route(r)
             goal = list(group_message.keys())[0].goal
             prompt = self.PROMPT_TEMPLATE.format(goal=goal)
             for role, content in group_message:
@@ -86,7 +88,7 @@ class CheckConsensus(Action):
     async def run(self, group_message: dict[Role, str], use_llm: bool = True) -> str:
         """给出每个Role的结果，查看是否达成共识"""
         if not group_message:
-            logger.error(" no group message")
+            logger.error("no group message")
         if not use_llm:
             return self.check_no_llm(group_message)
         else:
@@ -135,8 +137,6 @@ class ConsensusMaker(Role):
             rsp = {}
             for role_profile, value in role_dict:
                 rsp[self.rc.env.roles[role_profile]] = value
-                # if value:
-                #     add_to_route(self.rc.env.roles[role_profile])
         return rsp
 
     async def _act_by_order(self) -> Message:
