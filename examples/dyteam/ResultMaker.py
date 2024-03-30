@@ -19,7 +19,7 @@ class ResultMaker(Role):
         self.set_actions([ShowResult])
         self._watch([MakeConsensus])
 
-    def _act(self):
+    async def _act(self):
         final_code = self.latest_observed_msg.content
-        self.todo.run(final_code)
+        await self.todo.run(final_code)
         return

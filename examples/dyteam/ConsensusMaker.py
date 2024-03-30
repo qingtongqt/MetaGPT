@@ -128,7 +128,7 @@ class ConsensusMaker(Role):
     profile: str = "Consensus Maker"
     goal: str = "Receive output from other members of the group and help them to reach a consensus"
     constraints: str = ""
-    group_message: dict[Role, str] = {}
+    group_message: dict[str, str] = {}
     next_group: str = MESSAGE_ROUTE_TO_ALL
 
     def __init__(self, **kwargs):
@@ -139,7 +139,10 @@ class ConsensusMaker(Role):
     async def _act(self) -> Message:
         if self.group_message is None:
             logger.warning(f"group_message is none!")
-        rsp = await self.todo.run(self.group_message)
+        role_message: dict[Role, str] = {}
+        for role_profile, m in self.group_message.items():
+            role_message[self.rc.env.roles[role_profile]] = m
+        rsp = await self.todo.run(role_message)
         msg = None
         if isinstance(self.rc.todo, CheckConsensus):
             pattern = r'\{.*?\}'
@@ -149,26 +152,24 @@ class ConsensusMaker(Role):
                 logger.error(f"rsp:{rsp} can't be parsed")
             logger.debug(f"rsp:{rsp}")
             roleprofile_dict = json.loads(rsp)
-            role_dict = {}
-            for role_profile, value in roleprofile_dict.items():
-                role_dict[self.rc.env.roles[role_profile]] = value
-            if all(value for value in role_dict.values()):
+            assert set(roleprofile_dict.keys()) == set(self.group_message.keys())
+            if all(value for value in roleprofile_dict.values()):
                 msg = Message(
-                        content=str(role_dict),
+                        content=str(roleprofile_dict),
                         role=self.profile,
                         cause_by=self.rc.todo,
                         sent_from=self,
                     )
                 self.rc.memory.add(msg)
             else:
-                for role, value in role_dict.items():
+                for role, value in roleprofile_dict.items():
                     if not value:
                         del self.group_message[role]
         elif isinstance(self.rc.todo, MakeConsensus):
             msg = Message(
                 content=rsp,
                 role=self.profile,
-                cause_by=self.rc.to,
+                cause_by=self.rc.todo,
                 sent_from=self,
                 send_to={self.next_group}
             )
@@ -178,7 +179,7 @@ class ConsensusMaker(Role):
     async def react(self) -> Message:
         """Entry to one of three strategies by which Role reacts to the observed Message"""
         for m in self.rc.news:
-            self.group_message[self.rc.env.roles[m.role]] = m.content
+            self.group_message[m.role] = m.content
         if self.rc.react_mode == RoleReactMode.REACT:
             rsp = await self._react()
         elif self.rc.react_mode == RoleReactMode.BY_ORDER:

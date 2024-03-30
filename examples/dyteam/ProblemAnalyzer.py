@@ -42,8 +42,10 @@ class ProblemAnalyzerConsensusMaker(ConsensusMaker):
     async def _act(self) -> Message:
         if self.group_message is None:
             logger.warning(f"group_message is none!")
-        logger.info(f"group_message:{self.group_message}")
-        rsp = await self.todo.run(group_message=self.group_message, use_llm=True)
+        role_message: dict[Role, str] = {}
+        for role_profile, m in self.group_message.items():
+            role_message[self.rc.env.roles[role_profile]] = m
+        rsp = await self.todo.run(role_message)
         msg = None
         if isinstance(self.rc.todo, MakeConsensus):
             msg = Message(

@@ -40,7 +40,7 @@ class WriteCode(Action):
 
 class CodeGeneratorConsensusMaker(ConsensusMaker):
     name: str = "Sam"
-    profile: str = "Consensus Maker"
+    profile: str = "Code Generator Consensus Maker"
     goal: str = "Receive code from other members of the Code Generator group and help them to reach a consensus"
     next_group: str = "Result Maker"
 
