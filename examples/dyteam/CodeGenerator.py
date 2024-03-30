@@ -8,6 +8,7 @@ from metagpt.roles.role import Role
 from metagpt.schema import Message
 from metagpt.logs import logger
 import re
+from ConsensusMaker import CheckConsensus, MakeConsensus, ConsensusMaker
 
 
 class WriteCode(Action):
@@ -23,8 +24,8 @@ class WriteCode(Action):
     """
     name: str = "WriteCode"
 
-    async def run(self, instruction: str):
-        prompt = self.PROMPT_TEMPLATE.format(instruction=instruction)
+    async def run(self, analysis: str, instruction:str):
+        prompt = self.PROMPT_TEMPLATE.format(Analysis=analysis, instruction=instruction)
         rsp = await self._aask(prompt)
         code_text = WriteCode.parse_code(rsp)
         return code_text
@@ -41,15 +42,39 @@ class CodeWriter(Role):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.set_actions([WriteCode])
-        # TODO self._watch()
+        self._watch([MakeConsensus])
 
     async def _act(self) -> Message:
         # 解析接收到的消息中的指令
-        instruction = self.get_memories(k=1)
+        analysis = self.latest_observed_msg.content
         # 执行写代码的动作
-        code = await self.todo.run(instruction)
-        msg = Message(role=self.name, content=code, cause_by=WriteCode, send_to="ConsensusMaker")
+        code = await self.todo.run(analysis=analysis, instruction=self.rc.env.UserPrompt)
+        msg = Message(role=self.name, content=code, cause_by=WriteCode, send_to="Consensus Maker")
         return msg
+
+    async def _observe(self, ignore_memory=False) -> int:
+        """Prepare new messages for processing from the message buffer and other sources."""
+        # Read unprocessed messages from the msg buffer.
+        news = []
+        if self.recovered:
+            news = [self.latest_observed_msg] if self.latest_observed_msg else []
+        if not news:
+            news = self.rc.msg_buffer.pop_all()
+        # Store the read messages in your own memory to prevent duplicate processing.
+        old_messages = [] if ignore_memory else self.rc.memory.get()
+        # Filter out messages of interest.
+        self.rc.news = [
+            n for n in news if n.cause_by in self.rc.watch and n.role is "Problem Analyzer Consensus Maker" and n not in old_messages
+        ]
+        self.latest_observed_msg = self.rc.news[-1] if self.rc.news else None  # record the latest observed msg
+        self.rc.memory.add_batch(self.rc.news)
+        # Design Rules:
+        # If you need to further categorize Message objects, you can do so using the Message.set_meta function.
+        # msg_buffer is a receiving buffer, avoid adding message data and operations to msg_buffer.
+        news_text = [f"{i.role}: {i.content[:20]}..." for i in self.rc.news]
+        if news_text:
+            logger.debug(f"{self._setting} observed: {news_text}")
+        return len(self.rc.news)
 
 
 class AlgorithmDeveloper(CodeWriter):
