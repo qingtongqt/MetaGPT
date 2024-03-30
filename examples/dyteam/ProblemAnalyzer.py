@@ -100,7 +100,7 @@ class RequirementsEngineer(ProblemAnalyzer):
                  "capable of articulating specific constraints and expectations that a solution must fulfill.")
 
 
-class AlgorithmExpert(Role):
+class AlgorithmExpert(ProblemAnalyzer):
     name: str = "Julia"
     profile: str = "Algorithm Expert"
     desc: str = ("You are an algorithm Expert. "
