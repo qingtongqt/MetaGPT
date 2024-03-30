@@ -1,6 +1,6 @@
 # -*- coding:utf-8 -*-
 from metagpt.actions.action import Action
-from metagpt.roles.role import Role
+from metagpt.roles.role import Role, RoleReactMode
 from metagpt.schema import Message
 from metagpt.logs import logger
 from abc import abstractmethod
@@ -13,8 +13,9 @@ import random
 
 class MakeConsensus(Action):
     PROMPT_TEMPLATE: str = """
+        All the members in the team have the same goal to {goal}.
         Your task is to create a consensus version that incorporates the best aspects of each
-        Here are the results given by all members of the team with the common goal of {goal}:
+        Here are the results given by all members of the team:
         """
     name: str = "MakeConsensus"
 
@@ -120,51 +121,57 @@ class ConsensusMaker(Role):
     profile: str = "Consensus Maker"
     goal: str = "Receive output from other members of the group and help they to reach a consensus"
     constraints: str = ""
+    group_message: dict[Role, str]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.set_actions([CheckConsensus, MakeConsensus])
         self._set_react_mode(react_mode="by_order")
 
-    async def _act(self, group_message=None):
-        if group_message is None:
+    async def _act(self) -> Message:
+        if self.group_message is None:
             logger.warning(f"group_message is none!")
-        rsp = await self.todo.run(group_message)
+        rsp = await self.todo.run(self.group_message)
+        msg = None
         if isinstance(self.rc.todo, CheckConsensus):
             if not rsp.startwith("{"):
                 logger.error(f"rsp:{rsp} can't be parsed")
-            role_dict = json.loads(rsp)
-            rsp = {}
-            for role_profile, value in role_dict:
-                rsp[self.rc.env.roles[role_profile]] = value
-        return rsp
-
-    async def _act_by_order(self) -> Message:
-        start_idx = self.rc.state if self.rc.state >= 0 else 0  # action to run from recovered state
-        rsp = Message(content="No actions taken yet")  # return default message if actions=[]
-        group_message = {}
-        for m in self.rc.news:
-            group_message[self.rc.env.roles[m.role]] = m.content
-        for i in range(start_idx, len(self.states)):
-            self._set_state(i)
-            rsp = await self._act(group_message=group_message)
-            # CheckConsensus时
-            if i == 0:
-                # 达成共识，字典全为True
-                assert isinstance(rsp, dict)
-                if all(value for value in rsp.values()):
-                    add_to_route(self.rc.env.roles[self.rc.news[-1].role])
-                    return Message(
-                        content=self.latest_observed_msg.content,
-                        role=self._setting,
+            roleprofile_dict = json.loads(rsp)
+            role_dict = {}
+            for role_profile, value in roleprofile_dict:
+                role_dict[self.rc.env.roles[role_profile]] = value
+            if all(value for value in role_dict.values()):
+                add_to_route(self.rc.env.roles[self.rc.news[-1].role])
+                msg = Message(
+                        content=str(role_dict),
+                        role=self.profile,
                         cause_by=self.rc.todo,
                         sent_from=self,
                     )
-                else:
-                    # 删除未达成共识的角色
-                    for role, value in rsp.items():
-                        if not value:
-                            del group_message[role]
-        # MakeConsensus需返回Message
-        assert isinstance(rsp, Message)
-        return rsp  # return output from the last action
+                self.rc.memory.add(msg)
+            else:
+                for role, value in role_dict.items():
+                    if not value:
+                        del self.group_message[role]
+        elif isinstance(self.rc.todo, MakeConsensus):
+            msg = Message(
+                content=rsp,
+                role=self.profile,
+                cause_by=self.rc.to,
+                sent_from=self,
+            )
+        assert not msg
+        return msg
+
+    async def react(self) -> Message:
+        """Entry to one of three strategies by which Role reacts to the observed Message"""
+        for m in self.rc.news:
+            self.group_message[self.rc.env.roles[m.role]] = m.content
+        if self.rc.react_mode == RoleReactMode.REACT:
+            rsp = await self._react()
+        elif self.rc.react_mode == RoleReactMode.BY_ORDER:
+            rsp = await self._act_by_order()
+        else:
+            raise ValueError(f"Unsupported react mode: {self.rc.react_mode}")
+        self._set_state(state=-1)  # current reaction is complete, reset state to -1 and todo back to None
+        return rsp
