@@ -28,10 +28,11 @@ class Analyze(Action):
 
 
 class ProblemAnalyzerConsensusMaker(ConsensusMaker):
-    name: str = "Sam"
+    name: str = "Tom"
     profile: str = "Problem Analyzer Consensus Maker"
-    goal: str = "Receive output from other members of the Problem Analyzer group and help they to reach a consensus"
+    goal: str = "Receive output from other members of the Problem Analyzer group and help them to reach a consensus"
     constraints: str = ""
+    next_group: str = "Code Generator"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -41,7 +42,7 @@ class ProblemAnalyzerConsensusMaker(ConsensusMaker):
     async def _act(self) -> Message:
         if self.group_message is None:
             logger.warning(f"group_message is none!")
-        rsp = await self.todo.run(self.group_message)
+        rsp = await self.todo.run(group_message=self.group_message, use_llm=True)
         msg = None
         if isinstance(self.rc.todo, MakeConsensus):
             msg = Message(
@@ -66,7 +67,7 @@ class ProblemAnalyzer(Role):
     async def _act(self) -> Message:
         # 解析接收到的UserRequirement
         instruction = self.get_memories(k=1)[0].content
-        logger.debug(f"instruction:{instruction}")
+        # logger.debug(f"instruction:{instruction}")
         # 执行分析的动作
         analyze_result = await self.todo.run(instruction)
         logger.debug(f"analyze result:{analyze_result}")

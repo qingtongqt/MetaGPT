@@ -38,6 +38,18 @@ class WriteCode(Action):
         return code_text
 
 
+class CodeGeneratorConsensusMaker(ConsensusMaker):
+    name: str = "Sam"
+    profile: str = "Consensus Maker"
+    goal: str = "Receive code from other members of the Code Generator group and help them to reach a consensus"
+    next_group: str = "Debugger"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.set_actions([CheckConsensus, MakeConsensus])
+        self._watch([WriteCode])
+
+
 class CodeWriter(Role):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -49,7 +61,7 @@ class CodeWriter(Role):
         analysis = self.latest_observed_msg.content
         # 执行写代码的动作
         code = await self.todo.run(analysis=analysis, instruction=self.rc.env.UserPrompt)
-        msg = Message(role=self.name, content=code, cause_by=WriteCode, send_to="Consensus Maker")
+        msg = Message(role=self.profile, content=code, cause_by=WriteCode, send_to="Code Generator Consensus Maker")
         return msg
 
     async def _observe(self, ignore_memory=False) -> int:

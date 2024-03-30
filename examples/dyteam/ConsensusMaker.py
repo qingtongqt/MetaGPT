@@ -3,12 +3,14 @@ from metagpt.actions.action import Action
 from metagpt.roles.role import Role, RoleReactMode
 from metagpt.schema import Message
 from metagpt.logs import logger
+from metagpt.const import MESSAGE_ROUTE_TO_ALL
 from abc import abstractmethod
 import json
 import math
 import numpy as np
 from route import add_to_route
 import random
+import re
 
 
 class MakeConsensus(Action):
@@ -74,11 +76,12 @@ class CheckConsensus(Action):
         "Your task is to check whether all answers given by different members are in agreement. "
         "All members have the same goal: {goal}.\n"
         "You need to give a dict to judge whether they make consensus, "
-        "for example:{\"Role1\":True, \"Role2\":False, \"Role3\":True, \"Role4\":True} "
+        "for example:{\"Role1\":true, \"Role2\":false, \"Role3\":true, \"Role4\":true} "
         "means Role1 ,Role3 and Role4 are in agreement while Role2 has different opinions.\n"
-        "You need to find the role that reaches the most consensus and set the corresponding item to True, "
-        "and the role that does not reach consensus set it to False.\n"
-        "Here are the results given by all members of the team:"
+        "You need to find the roles that have the most agreements and set their attributes to true. "
+        "For roles that do not reach consensus with others, set them to false.\n"
+        "In other words, I hope to find the correct answer through this method.\n"
+        "Here are the results given by all roles in the team:"
     )
     name: str = "CheckConsensus"
 
@@ -97,31 +100,40 @@ class CheckConsensus(Action):
             prompt = self.PROMPT_TEMPLATE.format(goal=goal)
             for role, content in group_message:
                 prompt += f"{role.profile}: {content}\n"
-            prompt += "\nReturn a dict with NO other texts:"
+            prompt += "Return a dict with NO other texts:"
 
             consensus_ans = await self._aask(prompt)
             return consensus_ans
 
-    @staticmethod
-    def parse_dict(group_message, rsp) -> dict[Role, bool]:
-        if not rsp.startswith("{"):
-            logger.error(f"rsp:{rsp} can't be parsed")
-        parsed_dict = json.loads(rsp)
-        role_bool_dict = {}
-        for role in group_message:
-            if role.profile in parsed_dict:
-                role_bool_dict[role] = parsed_dict[role.profile]
-        for role, value in role_bool_dict.items():
-            logger.debug(f"Role profile: {role.profile}, Value: {value}")
-        return role_bool_dict
+    # @staticmethod
+    # def parse_dict(group_message, rsp) -> dict[Role, bool]:
+    #     if not rsp.startswith("{"):
+    #         logger.error(f"rsp:{rsp} can't be parsed")
+    #     parsed_dict = json.loads(rsp)
+    #     role_bool_dict = {}
+    #     for role in group_message:
+    #         if role.profile in parsed_dict:
+    #             role_bool_dict[role] = parsed_dict[role.profile]
+    #     for role, value in role_bool_dict.items():
+    #         logger.debug(f"Role profile: {role.profile}, Value: {value}")
+    #     return role_bool_dict
 
 
 class ConsensusMaker(Role):
-    name: str = "Sam"
+    """默认流程：
+    1. 观察有无消息
+    2. 初始化group_message
+    3. CheckConsensus 返回dict[Role,bool]
+    4. 从group_message中删除没有达成共识的角色消息
+    5. 采用共识算法选出采用的角色消息，加入角色路径 (可选：利用llm生成共识信息，所有角色加入路径)
+    6. 返回所选角色的消息
+    注意： 默认返回的消息send_to:MESSAGE_ROUTE_TO_ALL
+    """
     profile: str = "Consensus Maker"
-    goal: str = "Receive output from other members of the group and help they to reach a consensus"
+    goal: str = "Receive output from other members of the group and help them to reach a consensus"
     constraints: str = ""
     group_message: dict[Role, str]
+    next_group: str = MESSAGE_ROUTE_TO_ALL
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -134,14 +146,16 @@ class ConsensusMaker(Role):
         rsp = await self.todo.run(self.group_message)
         msg = None
         if isinstance(self.rc.todo, CheckConsensus):
-            if not rsp.startwith("{"):
+            pattern = r'\{.*?\}'
+            match = re.search(pattern, rsp)
+            rsp = match.group(0) if match else None
+            if not rsp:
                 logger.error(f"rsp:{rsp} can't be parsed")
             roleprofile_dict = json.loads(rsp)
             role_dict = {}
             for role_profile, value in roleprofile_dict:
                 role_dict[self.rc.env.roles[role_profile]] = value
             if all(value for value in role_dict.values()):
-                add_to_route(self.rc.env.roles[self.rc.news[-1].role])
                 msg = Message(
                         content=str(role_dict),
                         role=self.profile,
@@ -159,6 +173,7 @@ class ConsensusMaker(Role):
                 role=self.profile,
                 cause_by=self.rc.to,
                 sent_from=self,
+                send_to={self.next_group}
             )
         assert not msg
         return msg
