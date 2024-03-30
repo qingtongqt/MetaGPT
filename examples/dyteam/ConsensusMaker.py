@@ -54,7 +54,7 @@ class MakeConsensus(Action):
                 add_to_route(r)
             goal = list(group_message.keys())[0].goal
             prompt = self.PROMPT_TEMPLATE.format(goal=goal)
-            for role, content in group_message:
+            for role, content in group_message.items():
                 prompt += f"{role.profile}:\n{content}\n"
             prompt += "\nReturn the consensus version with NO other texts,\nconsensus content:\n"
 
@@ -76,7 +76,7 @@ class CheckConsensus(Action):
         "Your task is to check whether all answers given by different members are in agreement. "
         "All members have the same goal: {goal}.\n"
         "You need to give a dict to judge whether they make consensus, "
-        "for example:{\"Role1\":true, \"Role2\":false, \"Role3\":true, \"Role4\":true} "
+        "for example:{{\"Role1\":true, \"Role2\":false, \"Role3\":true, \"Role4\":true}} "
         "means Role1 ,Role3 and Role4 are in agreement while Role2 has different opinions.\n"
         "You need to find the roles that have the most agreements and set their attributes to true. "
         "For roles that do not reach consensus with others, set them to false.\n"
@@ -85,20 +85,16 @@ class CheckConsensus(Action):
     )
     name: str = "CheckConsensus"
 
-    @abstractmethod
-    def check_no_llm(self, group_message: dict[Role, str]) -> str:
-        pass
-
     async def run(self, group_message: dict[Role, str], use_llm: bool = True) -> str:
         """给出每个Role的结果，查看是否达成共识"""
         if not group_message:
             logger.error("no group message")
         if not use_llm:
-            return self.check_no_llm(group_message)
+            raise NotImplementedError
         else:
             goal = list(group_message.keys())[0].goal
             prompt = self.PROMPT_TEMPLATE.format(goal=goal)
-            for role, content in group_message:
+            for role, content in group_message.items():
                 prompt += f"{role.profile}: {content}\n"
             prompt += "Return a dict with NO other texts:"
 
@@ -132,7 +128,7 @@ class ConsensusMaker(Role):
     profile: str = "Consensus Maker"
     goal: str = "Receive output from other members of the group and help them to reach a consensus"
     constraints: str = ""
-    group_message: dict[Role, str]
+    group_message: dict[Role, str] = {}
     next_group: str = MESSAGE_ROUTE_TO_ALL
 
     def __init__(self, **kwargs):
@@ -151,9 +147,10 @@ class ConsensusMaker(Role):
             rsp = match.group(0) if match else None
             if not rsp:
                 logger.error(f"rsp:{rsp} can't be parsed")
+            logger.debug(f"rsp:{rsp}")
             roleprofile_dict = json.loads(rsp)
             role_dict = {}
-            for role_profile, value in roleprofile_dict:
+            for role_profile, value in roleprofile_dict.items():
                 role_dict[self.rc.env.roles[role_profile]] = value
             if all(value for value in role_dict.values()):
                 msg = Message(
@@ -175,7 +172,7 @@ class ConsensusMaker(Role):
                 sent_from=self,
                 send_to={self.next_group}
             )
-        assert not msg
+        assert msg
         return msg
 
     async def react(self) -> Message:

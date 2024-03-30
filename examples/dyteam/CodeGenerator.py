@@ -24,7 +24,7 @@ class WriteCode(Action):
     """
     name: str = "WriteCode"
 
-    async def run(self, analysis: str, instruction:str):
+    async def run(self, analysis: str, instruction: str):
         prompt = self.PROMPT_TEMPLATE.format(Analysis=analysis, instruction=instruction)
         rsp = await self._aask(prompt)
         code_text = WriteCode.parse_code(rsp)
@@ -42,7 +42,7 @@ class CodeGeneratorConsensusMaker(ConsensusMaker):
     name: str = "Sam"
     profile: str = "Consensus Maker"
     goal: str = "Receive code from other members of the Code Generator group and help them to reach a consensus"
-    next_group: str = "Debugger"
+    next_group: str = "Result Maker"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -76,7 +76,7 @@ class CodeWriter(Role):
         old_messages = [] if ignore_memory else self.rc.memory.get()
         # Filter out messages of interest.
         self.rc.news = [
-            n for n in news if n.cause_by in self.rc.watch and n.role is "Problem Analyzer Consensus Maker" and n not in old_messages
+            n for n in news if n.cause_by in self.rc.watch and n.role == "Problem Analyzer Consensus Maker" and n not in old_messages
         ]
         self.latest_observed_msg = self.rc.news[-1] if self.rc.news else None  # record the latest observed msg
         self.rc.memory.add_batch(self.rc.news)

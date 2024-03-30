@@ -87,48 +87,6 @@ class DyTeam(Team):
     def _save(self):
         logger.info(self.model_dump_json())
 
-    def check_consensus(self) -> dict[str, bool]:
-        if not self.dynamic_group:
-            return
-        new_dict = {key: False for key in self.dynamic_group.keys()}
-        for group_name, roles in self.dynamic_group.items():
-            # 判断在dynamic_group中的每个role，最近一条消息是不是自己产生的
-            # 如果是其他role发过来的则不需check_consensus
-            if not all(role.rc.memory.get(1)[0].sent_from == role for role in roles):
-                continue
-
-            pred_solutions = [role.rc.memory.get(1)[0].content for role in roles]
-            pred_answers = []
-            for pred_solution in pred_solutions:
-                # pred_answer = extract_math_answer(pred_solution)
-                pred_answer = 'test'
-                if pred_answer:
-                    pred_answers.append(pred_answer)
-
-            if len(pred_answers) == 0:
-                logger.warning("extract_math_answer fail")
-                continue
-
-            def most_frequent(List):
-                counter = 0
-                num = List[0]
-
-                for i in List:
-                    # current_frequency = sum(is_equiv(i, item) for item in List)
-                    current_frequency = sum(item for item in List)
-                    if current_frequency > counter:
-                        counter = current_frequency
-                        num = i
-
-                return num, counter
-
-            consensus_answer, counter = most_frequent(pred_answers)
-            if counter > math.floor(2 / 3 * len(roles)):
-                print("Consensus answer: {}".format(consensus_answer))
-                new_dict[group_name] = True
-
-        return new_dict
-
     @serialize_decorator
     async def run(self, n_round=3, idea="", send_to="", dynamic_group: dict[str, set[Role]] = None, auto_archive=True):
         """Run company until target round or no money or reach consensus

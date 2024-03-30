@@ -42,17 +42,18 @@ class ProblemAnalyzerConsensusMaker(ConsensusMaker):
     async def _act(self) -> Message:
         if self.group_message is None:
             logger.warning(f"group_message is none!")
+        logger.info(f"group_message:{self.group_message}")
         rsp = await self.todo.run(group_message=self.group_message, use_llm=True)
         msg = None
         if isinstance(self.rc.todo, MakeConsensus):
             msg = Message(
                 content=rsp,
                 role=self.profile,
-                cause_by=self.rc.to,
+                cause_by=self.rc.todo,
                 sent_from=self,
                 send_to="Code Generator"
             )
-        assert not msg
+        assert msg
         return msg
 
 
