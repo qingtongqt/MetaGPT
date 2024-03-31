@@ -95,8 +95,8 @@ class CheckConsensus(Action):
             goal = list(group_message.keys())[0].goal
             prompt = self.PROMPT_TEMPLATE.format(goal=goal)
             for role, content in group_message.items():
-                prompt += f"{role.profile}: {content}\n"
-            prompt += "Return a dict with NO other texts:"
+                prompt += f"\n{role.profile}: {content}"
+            prompt += "\nReturn a dict with NO other texts:"
 
             consensus_ans = await self._aask(prompt)
             return consensus_ans
@@ -150,8 +150,19 @@ class ConsensusMaker(Role):
             rsp = match.group(0) if match else None
             if not rsp:
                 logger.error(f"rsp:{rsp} can't be parsed")
+            else:
+                rsp = rsp.replace('True', 'true').replace('False', 'false')
             logger.debug(f"rsp:{rsp}")
-            roleprofile_dict = json.loads(rsp)
+            try:
+                roleprofile_dict = json.loads(rsp)
+            except Exception as e:
+                logger.warning(f"ERROR:{e}")
+                return Message(
+                        content="CheckConsensus error",
+                        role=self.profile,
+                        cause_by=self.rc.todo,
+                        sent_from=self,
+                    )
             assert set(roleprofile_dict.keys()) == set(self.group_message.keys())
             if all(value for value in roleprofile_dict.values()):
                 msg = Message(
@@ -165,7 +176,16 @@ class ConsensusMaker(Role):
                 for role, value in roleprofile_dict.items():
                     if not value:
                         del self.group_message[role]
+                msg = Message(
+                        content=str(roleprofile_dict),
+                        role=self.profile,
+                        cause_by=self.rc.todo,
+                        sent_from=self,
+                    )
         elif isinstance(self.rc.todo, MakeConsensus):
+            if self.next_group == "Human":
+                self.rc.env.FinalResult = rsp
+                return
             msg = Message(
                 content=rsp,
                 role=self.profile,

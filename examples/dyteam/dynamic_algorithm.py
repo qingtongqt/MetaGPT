@@ -1,5 +1,6 @@
 # -*- coding:utf-8 -*-
 from human_eval.data import write_jsonl, read_problems
+from human_eval.execution_once import check_correctness
 from ProblemAnalyzer import ProblemAnalyst, RequirementsEngineer, AlgorithmExpert, ProblemAnalyzerConsensusMaker
 from CodeGenerator import (
     AlgorithmDeveloper,
@@ -10,52 +11,64 @@ from CodeGenerator import (
     CodeGeneratorConsensusMaker,
 )
 from ResultMaker import ResultMaker
-from metagpt.team import Team
+from route import get_route, clear_route
+from metagpt.dyteam import DyTeam
+from metagpt.logs import logger
 import asyncio
 import platform
-import fire
 
-test_prompt = "from typing import List\n\n\ndef has_close_elements(numbers: List[float], threshold: float) -> bool:\n" \
-              "    \"\"\" Check if in given list of numbers, are any two numbers closer to each other than\n " \
-              "   given threshold.\n    >>> has_close_elements([1.0, 2.0, 3.0], 0.5)\n    False\n" \
-              "    >>> has_close_elements([1.0, 2.8, 3.0, 4.0, 5.0, 2.0], 0.3)\n    True\n    \"\"\"\n"
+PA = ProblemAnalyst(addresses={"Problem Analyzer"})
+RE = RequirementsEngineer(addresses={"Problem Analyzer"})
+AE = AlgorithmExpert(addresses={"Problem Analyzer"})
+PACM = ProblemAnalyzerConsensusMaker(addresses={"Problem Analyzer", "Problem Analyzer Consensus Maker"})
 
+AD = AlgorithmDeveloper(addresses={"Code Generator"})
+CS = ComputerScientist(addresses={"Code Generator"})
+P = Programmer(addresses={"Code Generator"})
+SA = SoftwareArchitect(addresses={"Code Generator"})
+CA = CodeArtist(addresses={"Code Generator"})
+CGCM = CodeGeneratorConsensusMaker(addresses={"Code Generator Consensus Maker"})
 
-async def writecodetest(idea: str, investment: float = 10.0, n_round: int = 8):
-    PA = ProblemAnalyst(addresses={"Problem Analyzer"})
-    RE = RequirementsEngineer(addresses={"Problem Analyzer"})
-    AE = AlgorithmExpert(addresses={"Problem Analyzer"})
-    PACM = ProblemAnalyzerConsensusMaker(addresses={"Problem Analyzer", "Problem Analyzer Consensus Maker"})
+RM = ResultMaker(addresses={"Result Maker"})
 
-    AD = AlgorithmDeveloper(addresses={"Code Generator"})
-    CS = ComputerScientist(addresses={"Code Generator"})
-    P = Programmer(addresses={"Code Generator"})
-    SA = SoftwareArchitect(addresses={"Code Generator"})
-    CA = CodeArtist(addresses={"Code Generator"})
-    CGCM = CodeGeneratorConsensusMaker(addresses={"Code Generator Consensus Maker"})
-
-    RM = ResultMaker(addresses={"Result Maker"})
-
-    team = Team()
-    team.env.UserPrompt = test_prompt
-    team.hire([PA, RE, AE, PACM, AD, CS, P, SA, CA, CGCM, RM])
-    team.invest(investment)
-    team.run_project(idea, send_to="Problem Analyzer")  # send debate topic to Biden and let him speak first
-    await team.run(n_round=n_round)
+problems = read_problems()
+samples = []
 
 
-def main(idea: str = test_prompt, investment: float = 10.0, n_round: int = 8):
-    """
-    :param idea: Debate topic, such as "Topic: The U.S. should commit more in climate change fighting"
-                 or "Trump: Climate change is a hoax"
-    :param investment: contribute a certain dollar amount to watch the debate
-    :param n_round: maximum rounds of the debate
-    :return:
-    """
+async def simplewritecode(dyteam: DyTeam, idea: str, n_round: int = 5):
+    dyteam.run_project(idea, send_to="Problem Analyzer")  # send debate topic to Biden and let him speak first
+    completion = await dyteam.run(n_round=n_round)
+    return completion
+
+
+def humaneval(investment: float = 30.0, n_round: int = 5):
     if platform.system() == "Windows":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    asyncio.run(writecodetest(idea, investment, n_round))
+    dyteam = DyTeam()
+    dyteam.hire([PA, RE, AE, PACM, AD, CS, P, SA, CA, CGCM, RM])
+    dyteam.invest(investment)
+    for task_id, v in problems.items():
+        logger.info(f"task_id:{task_id}")
+        idea = v["prompt"]
+        dyteam.env.UserPrompt = idea
+        dyteam.env.FinalResult = ""
+        dyteam.run_project(idea, send_to="Problem Analyzer")
+        completion = asyncio.run(dyteam.run(n_round=n_round))
+        # 清除记忆
+        for r in dyteam.env.roles.values():
+            r.rc.memory.clear()
+        result = check_correctness(v, completion, timeout=10)
+        logger.info(f"result:{result}")
+        samples.append({"task_id": task_id, "completion": completion})
+        route = get_route()
+        logger.info(f"route:{[r.profile for r in route]}")
+        for r in route:
+            r.n += 1
+            if result['passed']:
+                r.w += 1
+
+    write_jsonl("samples_gpt-3.5-turbo-1106.jsonl", samples)
 
 
 if __name__ == "__main__":
-    fire.Fire(main)
+    humaneval()

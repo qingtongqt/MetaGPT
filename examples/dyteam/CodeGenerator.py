@@ -42,7 +42,7 @@ class CodeGeneratorConsensusMaker(ConsensusMaker):
     name: str = "Sam"
     profile: str = "Code Generator Consensus Maker"
     goal: str = "Receive code from other members of the Code Generator group and help them to reach a consensus"
-    next_group: str = "Result Maker"
+    next_group: str = "Human"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

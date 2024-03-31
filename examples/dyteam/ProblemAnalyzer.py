@@ -45,7 +45,7 @@ class ProblemAnalyzerConsensusMaker(ConsensusMaker):
         role_message: dict[Role, str] = {}
         for role_profile, m in self.group_message.items():
             role_message[self.rc.env.roles[role_profile]] = m
-        rsp = await self.todo.run(role_message)
+        rsp = await self.todo.run(role_message, use_llm=True)
         msg = None
         if isinstance(self.rc.todo, MakeConsensus):
             msg = Message(

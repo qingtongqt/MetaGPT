@@ -108,6 +108,7 @@ class Environment(ExtEnv):
     history: str = ""  # For debug
     context: Context = Field(default_factory=Context, exclude=True)
     UserPrompt: str = ""
+    FinalResult: str = ""
 
     @model_validator(mode="after")
     def init_roles(self):
