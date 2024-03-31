@@ -66,6 +66,7 @@ def humaneval(investment: float = 30.0, n_round: int = 5):
             r.n += 1
             if result['passed']:
                 r.w += 1
+        clear_route()
 
     write_jsonl("samples_gpt-3.5-turbo-1106.jsonl", samples)
 
