@@ -80,18 +80,13 @@ class Debator(Role):
         return msg
 
 
-async def debate(idea: str, investment: float = 3.0, n_round: int = 5):
+async def debate(idea: str, investment: float = 3.0, n_round: int = 3):
     """Run a team of presidents and watch they quarrel. :)"""
-    Biden = Debator(name="Biden", profile="Democrat", opponent_name="Trump")
-    Trump = Debator(name="Trump", profile="Republican", opponent_name="Biden")
-    team = Team()
-    team.hire([Biden, Trump])
-    team.invest(investment)
     team.run_project(idea, send_to="Biden")  # send debate topic to Biden and let him speak first
     await team.run(n_round=n_round)
 
 
-def main(idea: str, investment: float = 3.0, n_round: int = 10):
+def main(idea: str = "talk about china", n_round: int = 3):
     """
     :param idea: Debate topic, such as "Topic: The U.S. should commit more in climate change fighting"
                  or "Trump: Climate change is a hoax"
@@ -101,7 +96,16 @@ def main(idea: str, investment: float = 3.0, n_round: int = 10):
     """
     if platform.system() == "Windows":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    asyncio.run(debate(idea, investment, n_round))
+    for i in range(2):
+        Biden = Debator(name="Biden", profile="Democrat", opponent_name="Trump")
+        Trump = Debator(name="Trump", profile="Republican", opponent_name="Biden")
+        team = Team()
+        team.hire([Biden, Trump])
+        team.invest(3.0)
+        for role in team.env.roles.values():
+            role.rc.memory.clear()
+        team.run_project(idea, send_to="Biden")
+        asyncio.run(team.run(n_round=n_round))
 
 
 if __name__ == "__main__":
