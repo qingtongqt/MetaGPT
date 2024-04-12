@@ -11,6 +11,10 @@ def get_route():
     return _route
 
 
+def route_top():
+    return _route[-1]
+
+
 # 清空路由
 def clear_route():
     _route.clear()
