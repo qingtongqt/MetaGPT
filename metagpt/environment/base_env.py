@@ -26,7 +26,7 @@ class EnvType(Enum):
     ANDROID = "Android"
     GYM = "Gym"
     WEREWOLF = "Werewolf"
-    MINCRAFT = "Mincraft"
+    MINECRAFT = "Minecraft"
     STANFORDTOWN = "StanfordTown"
 
 
@@ -47,7 +47,7 @@ def mark_as_writeable(func):
 
 
 class ExtEnv(BaseModel):
-    """External Env to intergate actual game environment"""
+    """External Env to integrate actual game environment"""
 
     def _check_api_exist(self, rw_api: Optional[str] = None):
         if not rw_api:
@@ -131,8 +131,8 @@ class Environment(ExtEnv):
             self.roles[role.profile] = role
 
         for role in roles:  # setup system message with roles
-            role.set_env(self)
             role.context = self.context
+            role.set_env(self)
 
     def del_role(self, role: "Role"):
         """删除一个在当前环境的角色

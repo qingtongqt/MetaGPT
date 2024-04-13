@@ -5,6 +5,7 @@ Author: garylin2099
 @Modified By: mashenquan, 2023-11-1. In accordance with Chapter 2.1.3 of RFC 116, modify the data type of the `send_to`
         value of the `Message` object; modify the argument type of `get_by_actions`.
 """
+
 import asyncio
 import platform
 from typing import Any
@@ -80,12 +81,6 @@ class Debator(Role):
         return msg
 
 
-async def debate(idea: str, investment: float = 3.0, n_round: int = 3):
-    """Run a team of presidents and watch they quarrel. :)"""
-    team.run_project(idea, send_to="Biden")  # send debate topic to Biden and let him speak first
-    await team.run(n_round=n_round)
-
-
 def main(idea: str = "talk about china", n_round: int = 3):
     """
     :param idea: Debate topic, such as "Topic: The U.S. should commit more in climate change fighting"
@@ -109,4 +104,4 @@ def main(idea: str = "talk about china", n_round: int = 3):
 
 
 if __name__ == "__main__":
-    fire.Fire(main)
+    fire.Fire(main)  # run as python debate.py --idea="TOPIC" --investment=3.0 --n_round=5
