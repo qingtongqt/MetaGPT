@@ -44,9 +44,18 @@ async def simplewritecode(dyteam: DyTeam, idea: str, n_round: int = 5):
     return completion
 
 
-def humaneval(invesment: float = 10.0, n_round: int = 5):
+def humaneval(invesment: float = 5.0, n_round: int = 5):
+    roles = [PA, AD, CS, P, SA, CA, CGCM]
+    # with open('roles_data.txt', 'r') as file:
+    #     i = 0
+    #     for line in file:
+    #         profile, w, n = line.strip().split(',')
+    #         w, n = int(w), int(n)
+    #         assert profile == roles[i].profile
+    #         roles[i].set_w_n(w=w, n=n)
+    #         i += 1
     dyteam_writecode = DyTeam()
-    dyteam_writecode.hire([PA, AD, CS, P, SA, CA, CGCM])
+    dyteam_writecode.hire(roles)
     dyteam_writecode.invest(invesment)
     if platform.system() == "Windows":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -73,6 +82,9 @@ def humaneval(invesment: float = 10.0, n_round: int = 5):
         clear_route()
         if i % 5 == 0:  # N是您决定的保存频率，例如每10个任务保存一次
             write_jsonl("samples_temp.jsonl", samples)
+            with open('roles_data.txt', 'w') as file:
+                for role in roles:
+                    file.write(f"{role.profile},{role.w},{role.n}\n")
 
     write_jsonl("samples_gpt-3.5-turbo-1106.jsonl", samples)
 

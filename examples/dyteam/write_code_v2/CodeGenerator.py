@@ -14,8 +14,9 @@ class WriteCode(Action):
     {instruction}
     The Problem Analyzer gives you some tips after understanding the question:
     {Analysis}
-    You must write a python code, no free-flowing text (unless in a comment) according to the requirement. 
-    Write your full implementation following the format (restate the function signature).
+    You must write a python code, no free-flowing text (unless in a comment). 
+    Be sure to use the same indentation I specified. Furthermore, you may only write your response in code/comments.
+    Once more, please follow the template by repeating the original function, then writing the completion..
     Return ```python your_code_here ``` with NO other texts,
     your code:
     """

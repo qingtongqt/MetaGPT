@@ -13,7 +13,7 @@ import numpy as np
 from route import add_to_route
 import random
 import re
-from utils import check_function_result
+from utils import py_is_syntax_valid
 
 
 class MakeConsensus(Action):
@@ -110,8 +110,9 @@ class CheckConsensus(Action):
         if not use_llm:
             consensus_ans = {}
             for role, python_code in group_message.items():
-                execution_result = check_function_result(python_code=python_code)
-                if execution_result["passed"]:
+                # 检查语法错误
+                execution_result = py_is_syntax_valid(code=python_code)
+                if execution_result:
                     consensus_ans[role.profile] = True
                 else:
                     consensus_ans[role.profile] = False
