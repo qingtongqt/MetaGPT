@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 from human_eval.data import write_jsonl, read_problems
 from human_eval.execution_once import check_correctness
-from ProblemAnalyzer import ProblemAnalyzer
+from ProblemAssigner import ProblemAssigner
 from CodeGenerator import (
     AlgorithmDeveloper,
     ComputerScientist,
@@ -28,7 +28,7 @@ def write_json(filename, data):
 
 
 # RM = ResultMaker(addresses={"Result Maker"})
-PA = ProblemAnalyzer(addresses={"Problem Analyzer"})
+PA = ProblemAssigner(addresses={"Problem Assigner"})
 AD = AlgorithmDeveloper(addresses={"Code Generator", "Algorithm Developer"})
 CS = ComputerScientist(addresses={"Code Generator", "Computer Scientist"})
 P = Programmer(addresses={"Code Generator", "Programmer"})
@@ -39,12 +39,6 @@ D = Debugger(addresses={"Debugger"})
 
 problems = read_problems()
 samples = []
-
-
-async def simplewritecode(dyteam: DyTeam, idea: str, n_round: int = 5):
-    dyteam.run_project(idea, send_to="Problem Analyzer")  # send debate topic to Biden and let him speak first
-    completion = await dyteam.run(n_round=n_round)
-    return completion
 
 
 def humaneval(invesment: float = 5.0, n_round: int = 6):
@@ -65,6 +59,7 @@ def humaneval(invesment: float = 5.0, n_round: int = 6):
     loop = asyncio.get_event_loop()
     for i, (task_id, v) in enumerate(problems.items()):
         logger.info(f"task_id:{task_id}")
+        PA.queid = i
         dyteam_writecode.env.UserPrompt = v["prompt"]
         dyteam_writecode.env.FinalResult = ""
         # dyteam_writecode.env.EntryPoint = v["entry_point"]
@@ -85,11 +80,11 @@ def humaneval(invesment: float = 5.0, n_round: int = 6):
             if result['passed']:
                 r.w += 1
         clear_route()
-        if i % 5 == 0:  # N是您决定的保存频率，例如每10个任务保存一次
+        if i % 5 == 0:
             write_jsonl("samples_temp.jsonl", samples)
-            with open('roles_data.txt', 'w') as file:
-                for role in roles:
-                    file.write(f"{role.profile},{role.w},{role.n}\n")
+        with open('roles_data.txt', 'w') as file:
+            for role in roles:
+                file.write(f"{role.profile},{role.w},{role.n}\n")
 
 
     write_jsonl("samples_gpt-3.5-turbo-1106.jsonl", samples)

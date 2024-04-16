@@ -5,24 +5,9 @@ from metagpt.schema import Message
 from metagpt.logs import logger
 import re
 from ConsensusMaker import CheckConsensus, MakeConsensus, ConsensusMaker
-from ProblemAnalyzer import Analyze
+from ProblemAssigner import Assign
 from Debugger import Debug
-import ast
-from typing import Any
-
-
-def get_return_type(source: str) -> Any:
-    # 解析源代码为抽象语法树
-    tree = ast.parse(source)
-
-    # 遍历树中的所有节点
-    for node in ast.walk(tree):
-        # 检查节点是否为函数定义
-        if isinstance(node, ast.FunctionDef):
-            # 获取并返回函数的返回类型注解
-            if node.returns:
-                # 返回类型信息（如果存在）
-                return ast.unparse(node.returns)
+from utils import add_api_call
 
 
 class WriteCode(Action):
@@ -31,12 +16,7 @@ class WriteCode(Action):
     =========
     {instruction}
     =========
-    You must write a python code, no free-flowing text (unless in a comment) according to the requirement. 
-    The Problem Analyzer gives you some tips after understanding the question:
-    =========
-    {Analysis}
-    =========
-    When the function signature does not specify the input range, please do not throw an error for empty input or other unreasonable input, and please also provide a return value.
+    When the function signature does not specify the input range, please do not throw an error for empty input and give a reasonable return value.
     Please follow the template by repeating the original function, then writing the completion..
     Use ```python to put the completed Python code, including the necessary imports, in markdown quotes
     your code:
@@ -45,6 +25,7 @@ class WriteCode(Action):
 
     async def run(self, analysis: str, instruction: str):
         prompt = self.PROMPT_TEMPLATE.format(Analysis=analysis, instruction=instruction)
+        add_api_call()
         rsp = await self._aask(prompt)
         code_text = WriteCode.parse_code(rsp)
         return code_text
@@ -56,15 +37,19 @@ class WriteCode(Action):
         code_text = match.group(1) if match else rsp
         return code_text
 
+
 class ReWriteCode(Action):
     PROMPT_TEMPLATE: str = """
-    Here is a function signature and your previews completion:
+    Here is a function signature:
     {instruction}
+    ==========
+    And your previews implementation:
     {prevcode}
+    ==========
+    This implementation fails the test.
     the Debugger gives you some feedback:
     {debug}
-    Based on your previes completion and the debug message, rewrite the function.
-    When the function signature does not specify the input range, please do not throw an error for empty input or other unreasonable input, and please also provide a return value.
+    Based on your previews implementation and the debug message, rewrite the function.
     Use ```python to put the completed Python code, including the necessary imports, in markdown quotes
     your code:
     """
@@ -72,6 +57,7 @@ class ReWriteCode(Action):
 
     async def run(self, instruction: str, prevcode: str, debug: str):
         prompt = self.PROMPT_TEMPLATE.format(instruction=instruction, prevcode=prevcode, debug=debug)
+        add_api_call()
         rsp = await self._aask(prompt)
         code_text = WriteCode.parse_code(rsp)
         return code_text
@@ -100,7 +86,7 @@ class CodeWriter(Role):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.set_actions([WriteCode, ReWriteCode])
-        self._watch([Analyze, Debug])
+        self._watch([Assign, Debug])
         self._set_react_mode(react_mode="react")
 
     async def _react(self) -> Message:
@@ -122,7 +108,8 @@ class CodeWriter(Role):
             prevcode = prevmemory.content
             code = await todo.run(instruction=self.rc.env.UserPrompt, prevcode=prevcode, debug=debug)
             self.rc.env.FinalResult = code
-            return
+            msg = Message(role=self.profile, content=code, cause_by=todo, send_to="Debugger")
+            return msg
         elif isinstance(todo, WriteCode):
             # 解析接收到的消息中的指令
             analysis = self.latest_observed_msg.content

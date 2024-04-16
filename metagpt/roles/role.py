@@ -140,6 +140,7 @@ class Role(SerializationMixin, ContextMixin, BaseModel):
     states: list[str] = []
 
     is_dynamic: bool = False
+    is_activate: bool = True
     w: int = 0
     n: int = 0
 

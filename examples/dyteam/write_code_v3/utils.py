@@ -6,10 +6,15 @@ import io
 import os
 import multiprocessing
 import platform
-import signal
+import math
 import tempfile
 import threading
 
+API_CALL = 0
+
+def add_api_call():
+    global API_CALL
+    API_CALL += 1
 
 def unsafe_execute(python_code: str, timeout, result):
     with create_tempdir():
@@ -316,3 +321,11 @@ def cut_def_question(func_code, question, entry_point):
             in_func = True
 
     return "\n".join(import_lines) + "\n" + func_code
+
+def calculate_nct(w, n, N):
+    if N == 0:
+        return math.log(2)
+    elif n == 0:
+        return math.log(2) * (math.log(N)) ** 0.5
+    else:
+        return w / n + math.log(2) * (math.log(N) / n) ** 0.5

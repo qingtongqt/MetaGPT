@@ -10,9 +10,10 @@ from metagpt.logs import logger
 
 class Analyze(Action):
     PROMPT_TEMPLATE: str = """
-    Here is a function signature and its docstring by the user:
+    Please analyze the following function signature and provide specific suggestions on how to implement this function:
     {instruction}
-    Your task is to analyze the problem statement carefully and put forward a brief summary about things to pay attention to when writing code.
+    Please note that testing and documentation do not need to be considered, just what you need to pay attention to when writing code.
+    No need to give the code implementation.
     """
 
     name: str = "Analyze"
@@ -25,7 +26,7 @@ class Analyze(Action):
 
 class ProblemAnalyzer(Role):
     name: str = "Tom"
-    profile: str = "Problem Analyzer Consensus Maker"
+    profile: str = "Problem Analyzer"
     constraints: str = ""
     goal: str = "analyze the problem, understand and refine the specific requirements and constraints in the problem"
 

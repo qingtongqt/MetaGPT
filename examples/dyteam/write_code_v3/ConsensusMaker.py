@@ -6,14 +6,10 @@ from metagpt.roles.role import Role, RoleReactMode
 from metagpt.schema import Message
 from metagpt.logs import logger
 from metagpt.const import MESSAGE_ROUTE_TO_ALL
-from abc import abstractmethod
-import json
-import math
-import numpy as np
+from sacrebleu import sentence_bleu
 from route import add_to_route
 import random
-import re
-from utils import py_is_syntax_valid
+from utils import py_is_syntax_valid, calculate_nct
 
 
 class MakeConsensus(Action):
@@ -43,7 +39,7 @@ class MakeConsensus(Action):
                 NCTs = {}
                 N = sum(r.n for r in group_message.keys())
                 for r in group_message.keys():
-                    NCTs[r] = MakeConsensus.calculate_nct(r.w, r.n, N)
+                    NCTs[r] = calculate_nct(r.w, r.n, N)
                 sorted_role = sorted(NCTs, key=NCTs.get)
                 selected_role = sorted_role[0]
                 for i in range(1, len(sorted_role)):
@@ -81,15 +77,6 @@ class MakeConsensus(Action):
             consensus_content = await self._aask(prompt)
             return consensus_content
 
-    @staticmethod
-    def calculate_nct(w, n, N):
-        if N == 0:
-            return math.log(2)
-        elif n == 0:
-            return math.log(2) * (math.log(N)) ** 0.5
-        else:
-            return w / n + math.log(2) * (math.log(N) / n) ** 0.5
-
 
 class CheckConsensus(Action):
     PROMPT_TEMPLATE: str = (
@@ -111,6 +98,7 @@ class CheckConsensus(Action):
             logger.error("no group message")
         if not use_llm:
             consensus_ans = {}
+            cmp_res = lambda x, y: sentence_bleu(x, [y], lowercase=True).score >= 0.9 * 100
             for role, python_code in group_message.items():
                 # 检查语法错误
                 execution_result = py_is_syntax_valid(code=python_code)
