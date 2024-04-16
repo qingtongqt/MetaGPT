@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 from human_eval.data import write_jsonl, read_problems
 from human_eval.execution_once import check_correctness
-from ProblemAssigner import ProblemAssigner
+from TaskAssigner import TaskAssigner
 from CodeGenerator import (
     AlgorithmDeveloper,
     ComputerScientist,
@@ -28,7 +28,7 @@ def write_json(filename, data):
 
 
 # RM = ResultMaker(addresses={"Result Maker"})
-PA = ProblemAssigner(addresses={"Problem Assigner"})
+TA = TaskAssigner(addresses={"Problem Assigner"})
 AD = AlgorithmDeveloper(addresses={"Code Generator", "Algorithm Developer"})
 CS = ComputerScientist(addresses={"Code Generator", "Computer Scientist"})
 P = Programmer(addresses={"Code Generator", "Programmer"})
@@ -42,7 +42,7 @@ samples = []
 
 
 def humaneval(invesment: float = 5.0, n_round: int = 6):
-    roles = [PA, AD, CS, P, SA, CA, CGCM, D]
+    roles = [TA, AD, CS, P, SA, CA, CGCM, D]
     with open('roles_data.txt', 'r') as file:
         i = 0
         for line in file:
@@ -59,7 +59,6 @@ def humaneval(invesment: float = 5.0, n_round: int = 6):
     loop = asyncio.get_event_loop()
     for i, (task_id, v) in enumerate(problems.items()):
         logger.info(f"task_id:{task_id}")
-        PA.queid = i
         dyteam_writecode.env.UserPrompt = v["prompt"]
         dyteam_writecode.env.FinalResult = ""
         # dyteam_writecode.env.EntryPoint = v["entry_point"]

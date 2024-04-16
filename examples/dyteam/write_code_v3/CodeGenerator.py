@@ -5,7 +5,7 @@ from metagpt.schema import Message
 from metagpt.logs import logger
 import re
 from ConsensusMaker import CheckConsensus, MakeConsensus, ConsensusMaker
-from ProblemAssigner import Assign
+from TaskAssigner import Assign
 from Debugger import Debug
 from utils import add_api_call
 

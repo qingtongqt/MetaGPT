@@ -16,11 +16,10 @@ class Assign(Action):
         return instruction
 
 
-class ProblemAssigner(Role):
+class TaskAssigner(Role):
     name: str = "Tom"
-    profile: str = "Problem Assigner"
+    profile: str = "Task Assigner"
     constraints: str = ""
-    queid: int = 0
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
