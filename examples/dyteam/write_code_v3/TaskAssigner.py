@@ -7,6 +7,7 @@ from metagpt.roles.role import Role
 from metagpt.schema import Message
 from metagpt.logs import logger
 from utils import calculate_nct
+import random
 
 
 class Assign(Action):
@@ -32,11 +33,13 @@ class TaskAssigner(Role):
         code_group = []
         for role, addrs in self.rc.env.member_addrs.items():
             if "Code Generator" in addrs:
-                code_group.append(role)
+                if role.is_activate:
+                    code_group.append(role)
         NCTs = {}
         N = sum(r.n for r in code_group)
         for role in code_group:
             NCTs[role] = calculate_nct(role.w, role.n, N)
+
         sorted_role = sorted(NCTs, key=NCTs.get)
         logger.info(f"sorted role:{sorted_role}")
         selected_role = sorted_role[-1]

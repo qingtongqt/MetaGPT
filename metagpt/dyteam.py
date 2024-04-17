@@ -72,7 +72,7 @@ class DyTeam(Team):
         return dyteam
 
     @serialize_decorator
-    async def run(self, n_round=3, idea="", send_to="", auto_archive=True):
+    async def run(self, n_round=5, idea="", send_to="", auto_archive=True):
         """Run company until target round or no money"""
         if idea:
             self.run_project(idea=idea, send_to=send_to)
@@ -84,6 +84,8 @@ class DyTeam(Team):
             self._check_balance()
 
             await self.env.run()
+            if self.env.is_idle:
+                break
         self.env.archive(auto_archive)
         return self.env.FinalResult
 
