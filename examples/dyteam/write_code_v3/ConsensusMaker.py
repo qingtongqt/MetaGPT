@@ -9,7 +9,7 @@ from metagpt.const import MESSAGE_ROUTE_TO_ALL
 from sacrebleu import sentence_bleu
 from route import add_to_route
 import random
-from utils import py_is_syntax_valid, calculate_nct
+from utils import py_is_syntax_valid, calculate_nct, add_api_call, most_frequent
 
 
 class MakeConsensus(Action):
@@ -19,7 +19,7 @@ class MakeConsensus(Action):
         Here are the results given by all members of the team:
         """
     PAIR_WISE_TEMPLATE: str = """
-        Given a a function signature and its docstring:
+        Given a function signature and its docstring:
         {query}
         Which of the following code is correct and more relevant to the requirement?
         {role1}: {content1}
@@ -28,12 +28,12 @@ class MakeConsensus(Action):
         """
     name: str = "MakeConsensus"
 
-    async def run(self, group_message: dict[Role, str], query: str = None, use_algorithm: bool = True) -> str:
+    async def run(self, group_message: dict[Role, str], query: str = None, combine_all: bool = False) -> str:
         """给出每个Role的结果，返回共识"""
         if not group_message:
             logger.error(" no group message")
         selected_role = None
-        if use_algorithm:
+        if not combine_all:
             try:
                 # 共识算法
                 NCTs = {}
@@ -49,6 +49,7 @@ class MakeConsensus(Action):
                     prompt = self.PAIR_WISE_TEMPLATE.format(query=query, role1=role1.profile, role2=role2.profile,
                                                             content1=group_message[role1],
                                                             content2=group_message[role2])
+                    add_api_call()
                     result = await self._aask(prompt)
                     if role2.profile == result or role2.profile in result:
                         selected_role = role2
@@ -72,8 +73,8 @@ class MakeConsensus(Action):
             prompt = self.PROMPT_TEMPLATE.format(goal=goal)
             for role, content in group_message.items():
                 prompt += f"{role.profile}:\n{content}\n"
-            prompt += "\nReturn the consensus version with NO other texts,\nconsensus content:\n"
-
+            prompt += "\nPlease give the consensus version:\n"
+            add_api_call()
             consensus_content = await self._aask(prompt)
             return consensus_content
 
@@ -92,31 +93,30 @@ class CheckConsensus(Action):
     )
     name: str = "CheckConsensus"
 
-    async def run(self, group_message: dict[Role, str], use_llm: bool = False) -> Union[str, dict]:
+    async def run(self, group_message: dict[str, str]) -> dict[str, str]:
         """给出每个Role的结果，查看是否达成共识"""
         if not group_message:
             logger.error("no group message")
-        if not use_llm:
-            consensus_ans = {}
-            cmp_res = lambda x, y: sentence_bleu(x, [y], lowercase=True).score >= 0.9 * 100
-            for role, python_code in group_message.items():
-                # 检查语法错误
-                execution_result = py_is_syntax_valid(code=python_code)
-                if execution_result:
-                    consensus_ans[role.profile] = True
-                else:
-                    consensus_ans[role.profile] = False
-            logger.info(f"Checkconsensus:{consensus_ans}")
-            return consensus_ans
-        else:
-            goal = list(group_message.keys())[0].goal
-            prompt = self.PROMPT_TEMPLATE.format(goal=goal)
-            for role, content in group_message.items():
-                prompt += f"\n{role.profile}: {content}"
-            prompt += "\nReturn a dict with NO other texts:"
+        group_message = group_message.copy()
+        syntax_ans = {}
 
-            consensus_ans = await self._aask(prompt)
-            return consensus_ans
+        for role_profile, python_code in group_message.items():
+            # 检查语法错误
+            execution_result = py_is_syntax_valid(code=python_code)
+            if execution_result:
+                syntax_ans[role_profile] = True
+            else:
+                syntax_ans[role_profile] = False
+        for key, value in list(syntax_ans.items()):
+            if not value:
+                group_message.pop(key, None)  # 从group_message中移除对应的键
+
+        cmp_res = lambda x, y: sentence_bleu(x, [y], lowercase=True).score >= 0.85 * 100
+        # consensus_ans 删除了没有达成共识的角色
+        consensus_ans = most_frequent(group_message=group_message, cmp_func=cmp_res)
+
+        logger.info(f"Checkconsensus:{consensus_ans.keys()}")
+        return consensus_ans
 
 
 class ConsensusMaker(Role):
@@ -133,7 +133,9 @@ class ConsensusMaker(Role):
     goal: str = "Receive output from other members of the group and help them to reach a consensus"
     constraints: str = ""
     group_message: dict[str, str] = {}
+    group_name: str = ""
     next_group: str = MESSAGE_ROUTE_TO_ALL
+    iterate_num: int = 0
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -143,26 +145,37 @@ class ConsensusMaker(Role):
     async def _act(self) -> Message:
         if self.group_message is None:
             logger.warning(f"group_message is none!")
-        role_message: dict[Role, str] = {}
-        for role_profile, m in self.group_message.items():
-            role_message[self.rc.env.roles[role_profile]] = m
         msg = None
         if isinstance(self.rc.todo, CheckConsensus):
-            roleprofile_dict = await self.todo.run(role_message)
-            for role, value in roleprofile_dict.items():
-                if not value:
-                    del self.group_message[role]
-            msg = Message(
-                content=str(roleprofile_dict),
-                role=self.profile,
-                cause_by=self.rc.todo,
-                sent_from=self,
-            )
+            consensus_ans = await self.todo.run(self.group_message)
+            # 如果没有达成共识，则返回迭代
+            logger.info(f"input num {len(self.group_message)}, consensus num {len(consensus_ans)}")
+            if len(consensus_ans) < 0.6 * len(self.group_message):
+                logger.info("can't make consensus, begin iterate")
+                content = ""
+                for role_profile, message in self.group_message.items():
+                    content += f"{role_profile}: \n{message}\n"
+                msg = Message(content=content, role=self.profile,
+                              cause_by=self.rc.todo, sent_from=self, send_to={self.group_name})
+                if self.iterate_num < 3:
+                    self.iterate_num += 1
+                    return msg
+                else:
+                    content = random.choice(list(self.group_message.values()))
+                    msg = Message(content=content, role=self.profile,
+                                  cause_by=self.rc.todo, sent_from=self, send_to={self.next_group})
+                    return msg
+            # 达成共识则删除未达成共识的答案
+            self.group_message = consensus_ans
+            return None
         elif isinstance(self.rc.todo, MakeConsensus):
+            role_message: dict[Role, str] = {}
+            for role_profile, m in self.group_message.items():
+                role_message[self.rc.env.roles[role_profile]] = m
             rsp = await self.todo.run(role_message, query=self.rc.env.UserPrompt)
             if self.next_group == "Human":
                 self.rc.env.FinalResult = rsp
-                return msg
+                return None
             msg = Message(
                 content=rsp,
                 role=self.profile,
@@ -175,13 +188,30 @@ class ConsensusMaker(Role):
 
     async def react(self) -> Message:
         """Entry to one of three strategies by which Role reacts to the observed Message"""
+        self.group_message = {}
         for m in self.rc.news:
             self.group_message[m.role] = m.content
-        if self.rc.react_mode == RoleReactMode.REACT:
-            rsp = await self._react()
-        elif self.rc.react_mode == RoleReactMode.BY_ORDER:
+        if len(self.group_message) == 1:
+            role_profile = self.rc.news[-1].role
+            add_to_route(self.rc.env.roles[role_profile])
+            msg = Message(content=self.rc.news[-1].content, role=self.profile, cause_by=MakeConsensus,
+                          send_to={self.next_group})
+            self.rc.memory.add(msg)
+            return msg
+        if self.rc.react_mode == RoleReactMode.BY_ORDER:
             rsp = await self._act_by_order()
         else:
             raise ValueError(f"Unsupported react mode: {self.rc.react_mode}")
         self._set_state(state=-1)  # current reaction is complete, reset state to -1 and todo back to None
         return rsp
+
+    async def _act_by_order(self) -> Message:
+        start_idx = self.rc.state if self.rc.state >= 0 else 0  # action to run from recovered state
+        rsp = Message(content="No actions taken yet")  # return default message if actions=[]
+        for i in range(start_idx, len(self.states)):
+            self._set_state(i)
+            rsp = await self._act()
+            # 如果是CheckConsensus动作：未达成共识则发信息给group成员以迭代答案
+            if i == 0 and rsp:
+                return rsp
+        return rsp  # return output from the last action

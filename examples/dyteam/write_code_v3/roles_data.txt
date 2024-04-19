@@ -1,8 +1,8 @@
-Problem Analyzer,0,0
-Algorithm Developer,0,0
-Computer Scientist,0,0
-Programmer,0,0
-Software Architect,0,0
-Code Artist,0,0
+Code Generator Task Assigner,0,0
+Algorithm Developer,36,56
+Computer Scientist,17,35
+Programmer,32,51
+Software Architect,15,31
+Code Artist,34,55
 Code Generator Consensus Maker,0,0
 Debugger,0,0

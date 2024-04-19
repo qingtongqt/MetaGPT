@@ -57,6 +57,7 @@ class CodeWriter(Role):
         self._watch([MakeConsensus])
 
     async def _act(self) -> Message:
+        logger.info(f"{self.rc.watch}")
         # 解析接收到的消息中的指令
         analysis = self.latest_observed_msg.content
         # 执行写代码的动作

@@ -444,7 +444,7 @@ class Role(SerializationMixin, ContextMixin, BaseModel):
         # msg_buffer is a receiving buffer, avoid adding message data and operations to msg_buffer.
         news_text = [f"{i.role}: {i.content[:20]}..." for i in self.rc.news]
         if news_text:
-            logger.debug(f"{self._setting} observed: {news_text}")
+            logger.debug(f"{self._setting} observed {len(self.rc.news)} message: {news_text}")
         return len(self.rc.news)
 
     def publish_message(self, msg):
@@ -558,6 +558,14 @@ class Role(SerializationMixin, ContextMixin, BaseModel):
             if not msg.cause_by:
                 msg.cause_by = UserRequirement
             self.put_message(msg)
+
+        if not self.is_activate:
+            self.rc.news = []
+            self.rc.msg_buffer.pop_all()
+            self.set_todo(None)
+            logger.debug(f"{self._setting}: is deactivate")
+            return
+
         if not await self._observe():
             # If there is no new information, suspend and wait
             logger.debug(f"{self._setting}: no news. waiting.")
