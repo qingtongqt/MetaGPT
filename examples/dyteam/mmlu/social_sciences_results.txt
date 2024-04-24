@@ -1,0 +1,12 @@
+econometrics,4,11
+high_school_geography,17,19
+high_school_government_and_politics,17,19
+high_school_macroeconomics,28,39
+high_school_microeconomics,20,23
+high_school_psychology,48,54
+human_sexuality,10,13
+professional_psychology,49,61
+public_relations,7,11
+security_studies,14,24
+sociology,16,20
+us_foreign_policy,7,10

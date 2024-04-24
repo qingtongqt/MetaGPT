@@ -127,6 +127,7 @@ class CodeGeneratorConsensusMaker(ConsensusMaker):
 
 
 class CodeGenerator(Role):
+    goal: str = "write code"
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.set_actions([WriteCode, ReWriteCode, Iterate])
@@ -174,7 +175,6 @@ class CodeGenerator(Role):
 class AlgorithmDeveloper(CodeGenerator):
     name: str = "James"
     profile: str = "Algorithm Developer"
-    goal: str = "write code"
     desc: str = ("You are an algorithm developer. "
                  "You are good at developing and utilizing algorithms to solve problems.")
 
@@ -183,7 +183,6 @@ class AlgorithmDeveloper(CodeGenerator):
 class ComputerScientist(CodeGenerator):
     name: str = "Andy"
     profile: str = "Computer Scientist"
-    goal: str = "write code"
     desc: str = ("You are a computer scientist. "
                  "You are good at writing high performance code and recognizing corner cases while solve real problems.")
 
@@ -191,7 +190,6 @@ class ComputerScientist(CodeGenerator):
 class Programmer(CodeGenerator):
     name: str = "Mike"
     profile: str = "Programmer"
-    goal: str = "write code"
     desc: str = ("You are an intelligent programmer. "
                  "You must complete the python function given to you by the user. ")
 
@@ -199,7 +197,6 @@ class Programmer(CodeGenerator):
 class SoftwareArchitect(CodeGenerator):
     name: str = "Kevin"
     profile: str = "Software Architect"
-    goal: str = "write code"
     desc: str = ("You are a software architect, skilled in designing and structuring code for scalability, "
                  "maintainability, and robustness. Your responses should focus on best practices in software design.")
 
@@ -207,13 +204,11 @@ class SoftwareArchitect(CodeGenerator):
 class CodeArtist(CodeGenerator):
     name: str = "Susan"
     profile: str = "Code Artist"
-    goal: str = "write code"
     desc: str = ("You are a coding artist. "
                  "You write Python code that is not only functional but also aesthetically pleasing and creative. "
-                 "Your goal is to make the code an art form while maintaining its utility. ")
+                 "Your goal is to make the code an art form while maintaining its utility.")
 
 class Mathematician(CodeGenerator):
     name: str = "Nick"
     profile: str = "Mathematician"
-    goal: str = "write code"
     desc: str = "You are a mathematician. You are good at math games, arithmetic calculation, and long-term planning."

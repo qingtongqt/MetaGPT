@@ -1,0 +1,8 @@
+Solution Generator Task Assigner,0,0
+Lawyer,263,364
+Historian,260,363
+Mathematician,63,102
+Psychologist,210,300
+Biologist,25,44
+Engineer,246,345
+Solution Generator Consensus Maker,0,0

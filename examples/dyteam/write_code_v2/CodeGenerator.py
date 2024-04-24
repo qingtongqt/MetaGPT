@@ -56,6 +56,7 @@ class WriteCode(Action):
         code_text = match.group(1) if match else rsp
         return code_text
 
+
 class ReWriteCode(Action):
     PROMPT_TEMPLATE: str = """
     Here is a function signature and your previews completion:

@@ -1,15 +1,11 @@
 # -*- coding:utf-8 -*-
-from typing import Union
-
 from metagpt.actions.action import Action
 from metagpt.roles.role import Role, RoleReactMode
 from metagpt.schema import Message
 from metagpt.logs import logger
 from metagpt.const import MESSAGE_ROUTE_TO_ALL
-from sacrebleu import sentence_bleu
-from route import add_to_route
 import random
-from utils import py_is_syntax_valid, calculate_nct, add_api_call, most_frequent, calculate_cosine_similarity
+from utils import calculate_nct, add_api_call, most_frequent, parse_single_choice, most_frequent_ans
 
 
 class MakeConsensus(Action):
@@ -19,12 +15,11 @@ class MakeConsensus(Action):
         Here are the results given by all members of the team:
         """
     PAIR_WISE_TEMPLATE: str = """
-        Given a function signature and its docstring:
-        {query}
-        Which of the following code is correct and more relevant to the requirement?
+        Given a query: {query}
+        Which of the following two passages is correct and more relevant to the query?
         {role1}: {content1}
         {role2}: {content2}
-        Output {role1} or {role2} with NO other text.
+        Output {role1} or {role2}.
         """
     name: str = "MakeConsensus"
 
@@ -35,6 +30,8 @@ class MakeConsensus(Action):
         selected_role = None
         if not combine_all:
             try:
+                for role in group_message.keys():
+                    role.w += 1
                 # 共识算法
                 NCTs = {}
                 N = sum(r.n for r in group_message.keys())
@@ -51,15 +48,16 @@ class MakeConsensus(Action):
                                                             content2=group_message[role2])
                     add_api_call()
                     result = await self._aask(prompt)
-                    if role2.profile == result or role2.profile in result:
-                        selected_role = role2
-                    elif role1.profile == result or role1.profile in result:
+                    role1_cnt = result.count(role1.profile)
+                    role2_cnt = result.count(role2.profile)
+                    if role1_cnt > role2_cnt:
                         selected_role = role1
+                    elif role1_cnt <= role2_cnt and role2_cnt > 0:
+                        selected_role = role2
                     else:
                         logger.warning(f"{result} not in {role1.profile} and {role2.profile}")
                         selected_role = role2
 
-                add_to_route(selected_role)
                 return group_message[selected_role]
             except Exception as e:
                 logger.warning(f"can't make consensus without llm because of {e}")
@@ -67,8 +65,8 @@ class MakeConsensus(Action):
                 return random.choice(list(group_message.values()))
 
         else:
-            for r in (group_message.keys()):
-                add_to_route(r)
+            # for r in (group_message.keys()):
+            #     add_to_route(r)
             goal = list(group_message.keys())[0].goal
             prompt = self.PROMPT_TEMPLATE.format(goal=goal)
             for role, content in group_message.items():
@@ -98,24 +96,9 @@ class CheckConsensus(Action):
         if not group_message:
             logger.error("no group message")
         group_message = group_message.copy()
-        syntax_ans = {}
-
-        for role_profile, python_code in group_message.items():
-            # 检查语法错误
-            execution_result = py_is_syntax_valid(code=python_code)
-            if execution_result:
-                syntax_ans[role_profile] = True
-            else:
-                syntax_ans[role_profile] = False
-        for key, value in list(syntax_ans.items()):
-            if not value:
-                group_message.pop(key, None)  # 从group_message中移除对应的键
-
-        cmp_res = lambda x, y: sentence_bleu(x, [y], lowercase=True).score + calculate_cosine_similarity(x, y) >= 0.8 * 100
+        cmp_res = lambda x, y: parse_single_choice(x) == parse_single_choice(y)
         # consensus_ans 删除了没有达成共识的角色
         consensus_ans = most_frequent(group_message=group_message, cmp_func=cmp_res)
-
-        logger.info(f"Checkconsensus:{consensus_ans.keys()}")
         return consensus_ans
 
 
@@ -147,32 +130,36 @@ class ConsensusMaker(Role):
             logger.warning(f"group_message is none!")
         msg = None
         if isinstance(self.rc.todo, CheckConsensus):
-            consensus_ans = await self.todo.run(self.group_message)
             # 如果没有达成共识，则返回迭代
-            logger.info(f"input num {len(self.group_message)}, consensus num {len(consensus_ans)}")
-            if len(consensus_ans) < 0.6 * len(self.group_message):
+            consensus_num = most_frequent_ans(list(self.group_message.values()))[-1]
+            logger.info(f"input num {len(self.group_message)}, consensus num {consensus_num}")
+            if consensus_num < 0.6 * len(self.group_message):
                 logger.info("can't make consensus, begin iterate")
                 content = ""
                 for role_profile, message in self.group_message.items():
-                    content += f"{role_profile}: \n{message}\n"
+                    content += f"{role_profile}: {message}\n"
                 msg = Message(content=content, role=self.profile,
                               cause_by=self.rc.todo, sent_from=self, send_to={self.group_name})
-                if self.iterate_num < 3:
+                if self.iterate_num < 2:
                     self.iterate_num += 1
                     return msg
                 else:
-                    content = random.choice(list(self.group_message.values()))
+                    logger.info("max iterate")
+                    content, _ = most_frequent_ans(list(self.group_message.values()))
+                    self.rc.env.FinalResult = content
                     msg = Message(content=content, role=self.profile,
                                   cause_by=self.rc.todo, sent_from=self, send_to={self.next_group})
                     return msg
-            # 达成共识则删除未达成共识的答案
-            self.group_message = consensus_ans
-            return None
+            else:
+                consensus_ans = await self.todo.run(self.group_message)
+                # 达成共识则删除未达成共识的答案
+                self.group_message = consensus_ans
+                return None
         elif isinstance(self.rc.todo, MakeConsensus):
-            role_message: dict[Role, str] = {}
             for role_profile, m in self.group_message.items():
-                role_message[self.rc.env.roles[role_profile]] = m
-            rsp = await self.todo.run(role_message, query=self.rc.env.UserPrompt)
+                role = self.rc.env.roles[role_profile]
+                role.w += 1
+            rsp = random.choice(list(self.group_message.values()))
             if self.next_group == "Human":
                 self.rc.env.FinalResult = rsp
                 return None
@@ -191,9 +178,13 @@ class ConsensusMaker(Role):
         self.group_message = {}
         for m in self.rc.news:
             self.group_message[m.role] = m.content
+        for role_profile, m in self.group_message.items():
+            role = self.rc.env.roles[role_profile]
+            role.n += 1
         if len(self.group_message) == 1:
+            logger.warning("len(group_message) == 1")
             role_profile = self.rc.news[-1].role
-            add_to_route(self.rc.env.roles[role_profile])
+            # add_to_route(self.rc.env.roles[role_profile])
             msg = Message(content=self.rc.news[-1].content, role=self.profile, cause_by=MakeConsensus,
                           send_to={self.next_group})
             self.rc.memory.add(msg)

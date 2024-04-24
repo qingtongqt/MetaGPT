@@ -1,0 +1,14 @@
+anatomy,9,13
+business_ethics,9,10
+clinical_knowledge,24,26
+college_medicine,12,17
+global_facts,6,10
+human_aging,14,22
+management,9,10
+marketing,21,23
+medical_genetics,9,10
+miscellaneous,74,78
+nutrition,25,30
+professional_accounting,12,28
+professional_medicine,19,27
+virology,9,16

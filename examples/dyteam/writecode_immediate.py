@@ -35,7 +35,7 @@ async def main():
         completion = parse_code(completion)
         logger.info(completion)
         samples.append({"task_id": task_id, "completion": completion})
-    write_jsonl("gpt-3.5-turbo-1106-simple.jsonl", samples)
+    write_jsonl("gpt-3.5-turbo-0125-simple.jsonl", samples)
 
 
 if __name__ == "__main__":

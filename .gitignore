@@ -190,3 +190,4 @@ cov.xml
 .python-version
 samples_temp.jsonl
 samples_gpt-3.5-turbo-1106.jsonl
+/examples/dyteam/mmlu/data/

@@ -1,0 +1,13 @@
+formal_logic,7,12
+high_school_european_history,15,16
+high_school_us_history,18,20
+high_school_world_history,17,23
+international_law,10,12
+jurisprudence,9,10
+logical_fallacies,15,16
+moral_disputes,20,34
+moral_scenarios,32,89
+philosophy,23,31
+prehistory,28,32
+professional_law,79,153
+world_religions,14,17

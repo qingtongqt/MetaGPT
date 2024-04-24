@@ -9,6 +9,8 @@ import platform
 import math
 import tempfile
 import threading
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 API_CALL = 0
 
@@ -22,17 +24,10 @@ def get_api_call():
     return API_CALL
 
 
-# def most_frequent(clist, cmp_func):
-#     counter = 0
-#     num = clist[0]
-#
-#     for i in clist:
-#         current_frequency = sum(cmp_func(i, item) for item in clist)
-#         if current_frequency > counter:
-#             counter = current_frequency
-#             num = i
-#
-#     return num, counter
+def calculate_cosine_similarity(reference, candidate):
+    vectorizer = TfidfVectorizer()
+    tfidf = vectorizer.fit_transform([reference, candidate])
+    return cosine_similarity(tfidf[0:1], tfidf[1:2])[0][0]
 
 def most_frequent(group_message: dict[str, str], cmp_func) -> dict[str, str]:
     consensus_ans = {}
