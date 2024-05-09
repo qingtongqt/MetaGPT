@@ -43,6 +43,7 @@ samples = []
 
 def humaneval(invesment: float = 5.0, n_round: int = 10):
     roles = [CGTA, AD, CS, P, SA, CA, CGCM, D]
+    # 读取角色配置
     with open('roles_data.txt', 'r') as file:
         i = 0
         for line in file:
@@ -58,8 +59,6 @@ def humaneval(invesment: float = 5.0, n_round: int = 10):
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     loop = asyncio.get_event_loop()
     for i, (task_id, v) in enumerate(problems.items()):
-        if i <= 65:
-            continue
         logger.info(f"task_id:{task_id}")
         dyteam_writecode.env.UserPrompt = v["prompt"]
         D.task_id = task_id
