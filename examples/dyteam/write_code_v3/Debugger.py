@@ -77,7 +77,7 @@ class Debugger(Role):
                 r.n += 1
             clear_route()
             # 最大重写次数
-            if self.rewrite_num >= 2:
+            if self.rewrite_num >= 1:
                 self.rc.env.FinalResult = code
                 logger.info("max rewrite")
                 return

@@ -43,14 +43,14 @@ samples = []
 
 def humaneval(invesment: float = 5.0, n_round: int = 10):
     roles = [CGTA, AD, CS, P, SA, CA, CGCM, D]
-    # with open('roles_data.txt', 'r') as file:
-    #     i = 0
-    #     for line in file:
-    #         profile, w, n = line.strip().split(',')
-    #         w, n = int(w), int(n)
-    #         assert profile == roles[i].profile
-    #         roles[i].set_w_n(w=w, n=n)
-    #         i += 1
+    with open('roles_data.txt', 'r') as file:
+        i = 0
+        for line in file:
+            profile, w, n = line.strip().split(',')
+            w, n = int(w), int(n)
+            assert profile == roles[i].profile
+            roles[i].set_w_n(w=w, n=n)
+            i += 1
     dyteam_writecode = DyTeam(administrator=A)
     dyteam_writecode.hire(roles)
     dyteam_writecode.invest(invesment)
@@ -58,6 +58,8 @@ def humaneval(invesment: float = 5.0, n_round: int = 10):
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     loop = asyncio.get_event_loop()
     for i, (task_id, v) in enumerate(problems.items()):
+        if i <= 65:
+            continue
         logger.info(f"task_id:{task_id}")
         dyteam_writecode.env.UserPrompt = v["prompt"]
         D.task_id = task_id
@@ -77,13 +79,16 @@ def humaneval(invesment: float = 5.0, n_round: int = 10):
         samples.append({"task_id": task_id, "completion": completion})
         if i % 5 == 0:
             write_jsonl("samples_temp.jsonl", samples)
-        with open('roles_data.txt', 'w') as file:
-            for role in roles:
-                file.write(f"{role.profile},{role.w},{role.n}\n")
+            with open('roles_data.txt', 'w') as file:
+                for role in roles:
+                    file.write(f"{role.profile},{role.w},{role.n}\n")
 
         logger.info(f"API CALL: {get_api_call()}")
 
     write_jsonl("v3_gpt-3.5-turbo-1106.jsonl", samples)
+    with open('roles_data.txt', 'w') as file:
+        for role in roles:
+            file.write(f"{role.profile},{role.w},{role.n}\n")
     logger.info(f"final API CALL: {get_api_call()}")
 
 

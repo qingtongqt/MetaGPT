@@ -1,8 +1,8 @@
 Code Generator Task Assigner,0,0
-Algorithm Developer,36,56
-Computer Scientist,17,35
-Programmer,32,51
-Software Architect,15,31
-Code Artist,34,55
+Algorithm Developer,20,43
+Computer Scientist,15,33
+Programmer,21,34
+Software Architect,43,61
+Code Artist,24,40
 Code Generator Consensus Maker,0,0
 Debugger,0,0
